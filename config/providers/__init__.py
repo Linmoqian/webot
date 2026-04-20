@@ -5,6 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import AsyncGenerator
 
+import httpx
 from openai import AsyncOpenAI
 
 from agent import Event, TextDelta, ToolCall
@@ -25,6 +26,7 @@ class ProviderConfig:
     base_url: str | None = None
     max_tokens: int = 4096
     temperature: float = 0.7
+    verify_ssl: bool = True
 
 
 class OpenAIProvider:
@@ -33,7 +35,12 @@ class OpenAIProvider:
     def __init__(self, config: ProviderConfig | None = None):
         self.config = config or ProviderConfig()
         api_key = self.config.api_key or os.environ.get("OPENAI_API_KEY", "unused")
-        self._client = AsyncOpenAI(api_key=api_key, base_url=self.config.base_url)
+        http_client = httpx.AsyncClient(verify=self.config.verify_ssl)
+        self._client = AsyncOpenAI(
+            api_key=api_key,
+            base_url=self.config.base_url,
+            http_client=http_client,
+        )
 
     async def chat(
         self,

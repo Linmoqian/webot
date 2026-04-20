@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
-from typing import AsyncGenerator
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
@@ -18,37 +16,16 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from agent import Agent, AgentProtocol, Event, TextDelta, ToolCall, ToolResult
-from config.providers import OpenAIProvider
+from config.providers import OpenAIProvider, ProviderConfig
 from skills import ToolRegistry
 
 # ── 常量 ─────────────────────────────────────────────────────
 
 HISTORY_PATH = "~/.webot_history"
 WELCOME = "[bold cyan]webot[/] — 超轻量 Agent 框架  [dim]输入 help 查看命令[/]"
-PROMPT_STR = "[bold cyan]›[/] "
-CONTINUE_STR = "[dim]…[/] "
+PROMPT_STR = "你："
+CONTINUE_STR = "... "
 EXIT_WORDS = frozenset({"exit", "quit", "q"})
-
-
-# ── 演示用 Agent ─────────────────────────────────────────────
-
-class DummyAgent:
-    """模拟流式响应与工具调用，用于测试"""
-
-    async def process(self, message: str) -> AsyncGenerator[Event, None]:
-        yield ToolCall(name="search", arguments='{"query": "' + message + '"}')
-        await asyncio.sleep(0.3)
-        yield ToolResult(name="search", output="找到 3 个结果")
-        await asyncio.sleep(0.2)
-
-        words = (
-            f"关于 **{message}**，以下是搜索结果：\n\n"
-            "1. 第一个结果\n2. 第二个结果\n3. 第三个结果\n\n"
-            "```python\nprint('hello webot')\n```\n"
-        )
-        for char in words:
-            yield TextDelta(content=char)
-            await asyncio.sleep(0.01)
 
 
 # ── CLI ──────────────────────────────────────────────────────
@@ -57,7 +34,6 @@ class CLI:
     def __init__(self, agent: AgentProtocol | None = None):
         self.agent = agent or self._build_default_agent()
         self.console = Console()
-        self._active_task: asyncio.Task[None] | None = None
         self.session: PromptSession = PromptSession(
             history=FileHistory(os.path.expanduser(HISTORY_PATH)),
         )
@@ -76,7 +52,13 @@ class CLI:
             },
             handler=lambda args: f"搜索结果: {args.get('query', '')}",
         )
-        return Agent(provider=OpenAIProvider(), tools=tools)
+        provider = OpenAIProvider(ProviderConfig(
+            api_key="lm-studio",
+            model="gemma4:e2b",
+            base_url="https://frp-van.com:25941/v1",
+            verify_ssl=False,
+        ))
+        return Agent(provider=provider, tools=tools)
 
     # ── 公开接口 ─────────────────────────────────────────
 
@@ -92,15 +74,9 @@ class CLI:
 
     async def _loop(self) -> None:
         while True:
-            if self._active_task and self._active_task.done():
-                await self._active_task
-                self._active_task = None
-
             try:
                 text = await self._read_input()
             except (KeyboardInterrupt, EOFError):
-                if self._active_task and not self._active_task.done():
-                    self._active_task.cancel()
                 return
 
             if not text:
@@ -108,8 +84,6 @@ class CLI:
 
             cmd = text.strip().lower()
             if cmd in EXIT_WORDS:
-                if self._active_task and not self._active_task.done():
-                    self._active_task.cancel()
                 return
             if cmd == "help":
                 self._show_help()
@@ -119,29 +93,20 @@ class CLI:
                 self.console.print(WELCOME)
                 continue
 
-            if self._active_task is None:
-                self._active_task = asyncio.create_task(self._stream_response(text))
-                continue
-
-            enqueue = getattr(self.agent, "enqueue", None)
-            if callable(enqueue):
-                enqueue(text)
-                self.console.print("[dim]消息已进入 pending_queue[/]")
-            else:
-                self.console.print("[yellow]当前正在处理，请稍后重试[/]")
+            await self._stream_response(text)
 
     # ── 输入 ─────────────────────────────────────────────
 
     async def _read_input(self) -> str:
         """读取用户输入，支持 \\ 续行"""
         lines: list[str] = []
-        prompt = PROMPT_STR
+        current_prompt = PROMPT_STR
 
         while True:
-            line: str = await self.session.prompt_async(prompt)
+            line: str = await self.session.prompt_async(current_prompt)
             if line.endswith("\\"):
                 lines.append(line[:-1])
-                prompt = CONTINUE_STR
+                current_prompt = CONTINUE_STR
             else:
                 lines.append(line)
                 return "\n".join(lines)
@@ -151,51 +116,25 @@ class CLI:
     async def _stream_response(self, message: str) -> None:
         """流式渲染 agent 响应，交替展示文本与工具调用"""
         buf = ""
-        last_refresh = 0.0
-        
-        status = self.console.status("[dim]思考中...[/]", spinner="dots")
-        status.start()
-        status_running = True
+        with Live("", console=self.console, refresh_per_second=10, vertical_overflow="visible") as live:
+            async for event in self.agent.process(message):
+                if isinstance(event, TextDelta):
+                    buf += event.content
+                    live.update(Markdown(buf))
+                elif isinstance(event, ToolCall):
+                    if buf:
+                        live.update(Markdown(buf), refresh=True)
+                        buf = ""
+                    live.stop()
+                    self.console.print(self._render_tool_call(event))
+                    live.start()
+                elif isinstance(event, ToolResult):
+                    live.stop()
+                    self.console.print(self._render_tool_result(event))
+                    live.start()
 
-        try:
-            with Live("", console=self.console, auto_refresh=False, vertical_overflow="visible") as live:
-                async for event in self.agent.process(message):
-                    if isinstance(event, TextDelta):
-                        if status_running:
-                            status.stop()
-                            status_running = False
-                        buf += event.content
-                        live.update(Markdown(buf))
-                        now = time.monotonic()
-                        if now - last_refresh >= 0.15:
-                            live.refresh()
-                            last_refresh = now
-                    elif isinstance(event, ToolCall):
-                        if buf:
-                            live.update(Markdown(buf), refresh=True)
-                            buf = ""
-                        if status_running: 
-                            status.stop()
-                            status_running = False
-                        live.stop()
-                        self.console.print(self._render_tool_call(event))
-                        status.start()
-                        status_running = True
-                        live.start()
-                    elif isinstance(event, ToolResult):
-                        if status_running:
-                            status.stop()
-                            status_running = False
-                        live.stop()
-                        self.console.print(self._render_tool_result(event))
-                        status.start()
-                        status_running = True
-                        live.start()
-
+            if buf:
                 live.update(Markdown(buf), refresh=True)
-        finally:
-            if status_running:
-                status.stop()
 
         if buf:
             self.console.print()
