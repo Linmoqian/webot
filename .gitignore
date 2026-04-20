@@ -4,3 +4,4 @@ config/wechat_state/
 *.egg-info/
 .venv/
 .env
+artifacts/

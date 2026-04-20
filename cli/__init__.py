@@ -15,10 +15,11 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.syntax import Syntax
 
-from agent import Agent, AgentProtocol, Event, TextDelta, ToolCall, ToolResult
+from agent import Agent, Event, TextDelta, ToolCall, ToolResult
 from config.providers import OpenAIProvider
 from config.settings import load_settings
 from skills import ToolRegistry
+from tools import register_builtin_tools
 
 # ── 常量 ─────────────────────────────────────────────────────
 
@@ -32,28 +33,17 @@ EXIT_WORDS = frozenset({"exit", "quit", "q"})
 # ── CLI ──────────────────────────────────────────────────────
 
 class CLI:
-    def __init__(self, agent: AgentProtocol | None = None):
+    def __init__(self, agent: Agent | None = None):
         self.agent = agent or self._build_default_agent()
         self.console = Console()
         self.session: PromptSession = PromptSession(
             history=FileHistory(os.path.expanduser(HISTORY_PATH)),
         )
 
-    def _build_default_agent(self) -> AgentProtocol:
+    def _build_default_agent(self) -> Agent:
         settings = load_settings()
         tools = ToolRegistry()
-        tools.register(
-            name="search",
-            description="简单搜索工具",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "搜索关键词"},
-                },
-                "required": ["query"],
-            },
-            handler=lambda args: f"搜索结果: {args.get('query', '')}",
-        )
+        register_builtin_tools(tools)
         provider = OpenAIProvider(settings.provider)
         return Agent(
             provider=provider,
