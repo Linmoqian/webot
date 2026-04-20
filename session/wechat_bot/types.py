@@ -54,7 +54,7 @@ class WeChatConfig:
     token: str = ""
     base_url: str = "https://ilinkai.weixin.qq.com"
     cdn_base_url: str = "https://novac2c.cdn.weixin.qq.com/c2c"
-    state_dir: str = ""
+    state_dir: str = ""  # 默认 ./config/wechat_state
     poll_timeout: int = 35
     max_message_len: int = 4000
     route_tag: str | int | None = None
@@ -64,4 +64,4 @@ class WeChatConfig:
     def resolved_state_dir(self) -> Path:
         if self.state_dir:
             return Path(self.state_dir).expanduser()
-        return Path("./wechat_state")
+        return Path("./config/wechat_state")

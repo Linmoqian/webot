@@ -1,6 +1,6 @@
 __pycache__/
 *.pyc
-wechat_state/
+config/wechat_state/
 *.egg-info/
 .venv/
 .env

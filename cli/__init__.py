@@ -16,7 +16,8 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from agent import Agent, AgentProtocol, Event, TextDelta, ToolCall, ToolResult
-from config.providers import OpenAIProvider, ProviderConfig
+from config.providers import OpenAIProvider
+from config.settings import load_settings
 from skills import ToolRegistry
 
 # ── 常量 ─────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ class CLI:
         )
 
     def _build_default_agent(self) -> AgentProtocol:
+        settings = load_settings()
         tools = ToolRegistry()
         tools.register(
             name="search",
@@ -52,13 +54,13 @@ class CLI:
             },
             handler=lambda args: f"搜索结果: {args.get('query', '')}",
         )
-        provider = OpenAIProvider(ProviderConfig(
-            api_key="lm-studio",
-            model="gemma4:e2b",
-            base_url="https://frp-van.com:25941/v1",
-            verify_ssl=False,
-        ))
-        return Agent(provider=provider, tools=tools)
+        provider = OpenAIProvider(settings.provider)
+        return Agent(
+            provider=provider,
+            tools=tools,
+            system_prompt=settings.agent.system_prompt,
+            max_context_messages=settings.agent.max_context_messages,
+        )
 
     # ── 公开接口 ─────────────────────────────────────────
 
