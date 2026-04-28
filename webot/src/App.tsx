@@ -120,47 +120,49 @@ function App() {
           <div className="message-list">
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
-                <div className="message-avatar-box">
-                  {msg.role === "user" ? <User size={18} /> : <Bot size={18} />}
-                </div>
-                
-                <div className="message-content-box">
-                  <div className="message-sender-name">
-                    {msg.role === "user" ? "You" : "Nexus"}
+                <div className="message-inner">
+                  <div className="message-avatar-box">
+                    {msg.role === "user" ? <User size={18} /> : <Bot size={18} />}
                   </div>
+                  
+                  <div className="message-content-box">
+                    <div className="message-sender-name">
+                      {msg.role === "user" ? "You" : "Nexus"}
+                    </div>
 
-                  {msg.role === "agent" && msg.reasoning_content && (
-                    <div className={`reasoning-block ${msg.isThinking ? "is-thinking" : ""}`}>
-                      <button 
-                        className="reasoning-toggle" 
-                        onClick={() => toggleReasoning(index)}
-                      >
-                        {msg.showReasoning ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        <span className="reasoning-label">
-                          {msg.isThinking ? "Thinking Process" : "Thought Process"}
-                        </span>
-                        {msg.isThinking && <Loader2 size={12} className="spinner" />}
-                      </button>
-                      
-                      {msg.showReasoning && (
-                        <div className="reasoning-content">
-                          {msg.reasoning_content}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {msg.content && (
-                    <div className="message-text">
-                      {msg.content}
-                    </div>
-                  )}
-                  
-                  {msg.role === "agent" && !msg.content && msg.isThinking && (
-                    <div className="typing-dot-indicator">
-                      <span></span><span></span><span></span>
-                    </div>
-                  )}
+                    {msg.role === "agent" && msg.reasoning_content && (
+                      <div className={`reasoning-block ${msg.isThinking ? "is-thinking" : ""}`}>
+                        <button 
+                          className="reasoning-toggle" 
+                          onClick={() => toggleReasoning(index)}
+                        >
+                          {msg.showReasoning ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          <span className="reasoning-label">
+                            {msg.isThinking ? "Thinking Process" : "Thought Process"}
+                          </span>
+                          {msg.isThinking && <Loader2 size={12} className="spinner" />}
+                        </button>
+                        
+                        {msg.showReasoning && (
+                          <div className="reasoning-content">
+                            {msg.reasoning_content}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {msg.content && (
+                      <div className="message-text">
+                        {msg.content}
+                      </div>
+                    )}
+                    
+                    {msg.role === "agent" && !msg.content && msg.isThinking && (
+                      <div className="typing-dot-indicator">
+                        <span></span><span></span><span></span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -169,30 +171,32 @@ function App() {
         </div>
 
         <div className="input-dock">
-          <div className="input-wrapper">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-              placeholder="Ask anything..."
-              disabled={isLoading}
-              rows={1}
-            />
-            <button 
-              className={`send-button ${input.trim() && !isLoading ? 'active' : ''}`}
-              onClick={handleSend} 
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
-            </button>
-          </div>
-          <div className="input-footer-text">
-            Nexus AI can make mistakes. Consider verifying critical information.
+          <div className="input-dock-inner">
+            <div className="input-wrapper">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                placeholder="Ask anything..."
+                disabled={isLoading}
+                rows={1}
+              />
+              <button 
+                className={`send-button ${input.trim() && !isLoading ? 'active' : ''}`}
+                onClick={handleSend} 
+                disabled={isLoading || !input.trim()}
+              >
+                {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
+              </button>
+            </div>
+            <div className="input-footer-text">
+              Nexus AI can make mistakes. Consider verifying critical information.
+            </div>
           </div>
         </div>
       </div>

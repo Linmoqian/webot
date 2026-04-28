@@ -18,17 +18,15 @@ body {
   display: flex;
   width: 100%;
   height: 100vh;
-  background: #f9fafb;
+  background: white;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  max-width: 900px;
-  margin: 0 auto;
+  width: 100%;
   background: white;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.03);
   position: relative;
 }
 
@@ -46,6 +44,9 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .logo-box {
@@ -122,9 +123,18 @@ body {
 
 .message-row {
   display: flex;
-  padding: 24px 32px;
-  gap: 20px;
+  justify-content: center;
+  padding: 32px 24px;
+  width: 100%;
+  box-sizing: border-box;
   animation: fadeIn 0.3s ease;
+}
+
+.message-inner {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
 }
 
 .message-row.user {
@@ -234,10 +244,21 @@ body {
 
 /* Input area modernization */
 .input-dock {
-  padding: 24px 32px 32px 32px;
+  padding: 24px 20px 32px 20px;
   background: linear-gradient(0deg, white 60%, rgba(255,255,255,0) 100%);
   position: relative;
   z-index: 10;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-dock-inner {
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-wrapper {
@@ -250,6 +271,8 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transition: border-color 0.2s, box-shadow 0.2s;
   padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .input-wrapper:focus-within {
