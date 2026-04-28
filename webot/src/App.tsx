@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import "highlight.js/styles/github.css";
@@ -185,7 +186,7 @@ function App() {
                         {msg.showReasoning && (
                           <div className="reasoning-content">
                             <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
+                              remarkPlugins={[remarkGfm, remarkMath]}
                               rehypePlugins={[rehypeHighlight, rehypeKatex]}
                             >
                               {msg.reasoning_content || ""}
@@ -198,7 +199,7 @@ function App() {
                     {msg.content && (
                       <div className="message-text">
                         <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
+                          remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeHighlight, rehypeKatex]}
                         >
                           {msg.content}
