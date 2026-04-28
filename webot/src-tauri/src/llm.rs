@@ -55,7 +55,13 @@ pub async fn stream_and_emit(
                     return Ok(full_response);
                 }
                 if let Ok(parsed) = serde_json::from_str::<Value>(data) {
-                    if let Some(content) = parsed["choices"][0]["delta"]["content"].as_str() {
+                    let delta = &parsed["choices"][0]["delta"];
+                    if let Some(reasoning) = delta["reasoning_content"].as_str()
+                        .or_else(|| delta["reasoning"].as_str())
+                    {
+                        let _ = app.emit("chat-thinking", serde_json::json!({ "content": reasoning }));
+                    }
+                    if let Some(content) = delta["content"].as_str() {
                         full_response.push_str(content);
                         let _ = app.emit("chat-text", serde_json::json!({ "content": content }));
                     }

@@ -43,11 +43,29 @@ function App() {
     const cleanup = { current: () => {} };
 
     try {
+      const unlistenThinking = await listen<{ content: string }>("chat-thinking", (event) => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = {
+            ...last,
+            reasoning_content: (last.reasoning_content || "") + (event.payload.content || ""),
+            isThinking: true,
+            showReasoning: true,
+          };
+          return updated;
+        });
+      });
+
       const unlistenText = await listen<{ content: string }>("chat-text", (event) => {
         setMessages(prev => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
-          updated[updated.length - 1] = { ...last, content: last.content + (event.payload.content || "") };
+          updated[updated.length - 1] = {
+            ...last,
+            content: last.content + (event.payload.content || ""),
+            isThinking: false,
+          };
           return updated;
         });
       });
@@ -79,6 +97,7 @@ function App() {
       });
 
       cleanup.current = () => {
+        unlistenThinking();
         unlistenText();
         unlistenDone();
         unlistenError();
