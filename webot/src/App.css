@@ -6,18 +6,21 @@
   background-color: #f9fafb;
 }
 
-body {
-  margin: 0;
-  padding: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-}
-
+html,
+body,
 #root {
   width: 100%;
   height: 100%;
-  display: flex;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: hidden;
+  overflow: hidden;
 }
 
 .layout-container {
@@ -86,7 +89,14 @@ body {
 .chat-scroll-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.chat-scroll-area::-webkit-scrollbar {
+  display: none;
 }
 
 .hero-welcome {
@@ -300,6 +310,13 @@ textarea {
   min-height: 24px;
   max-height: 200px;
   outline: none;
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+textarea::-webkit-scrollbar {
+  display: none;
 }
 
 textarea::placeholder {
