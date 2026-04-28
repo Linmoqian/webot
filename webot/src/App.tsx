@@ -58,12 +58,16 @@ function App() {
     const id = qrIdRef.current;
     if (!id) return;
 
-    invoke<{ status?: string; bot_token?: string }>("poll_qr_status", { qrcodeId: id })
+    invoke<{ status?: string; bot_token?: string; baseurl?: string }>("poll_qr_status", { qrcodeId: id })
       .then(data => {
         const status = data.status;
         if (status === "confirmed") {
           setQrStatus("confirmed");
           stopQrPoll();
+          const token = data.bot_token || "";
+          if (token) {
+            invoke("save_wechat_token", { token, baseUrl: data.baseurl || null }).catch(() => {});
+          }
           setTimeout(() => closeQrModal(), 800);
         } else if (status === "expired") {
           setQrStatus("expired");

@@ -71,6 +71,8 @@ impl Default for AgentConfig {
 pub struct WechatConfig {
     #[serde(default = "default_wechat_base_url")]
     pub base_url: String,
+    #[serde(default)]
+    pub token: String,
 }
 
 fn default_wechat_base_url() -> String {
@@ -81,6 +83,7 @@ impl Default for WechatConfig {
     fn default() -> Self {
         Self {
             base_url: default_wechat_base_url(),
+            token: String::new(),
         }
     }
 }
@@ -111,4 +114,14 @@ pub fn load_settings() -> Settings {
     } else {
         Settings::default()
     }
+}
+
+pub fn config_path() -> Option<std::path::PathBuf> {
+    find_config()
+}
+
+pub fn save_settings(settings: &Settings) -> Result<(), String> {
+    let path = config_path().ok_or("config.json 未找到")?;
+    let content = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
+    std::fs::write(&path, content).map_err(|e| e.to_string())
 }

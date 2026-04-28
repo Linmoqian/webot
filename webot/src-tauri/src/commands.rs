@@ -127,3 +127,19 @@ pub async fn poll_qr_status(
     let data: Value = resp.json().await.map_err(|e| format!("解析状态响应失败: {e}"))?;
     Ok(data)
 }
+
+#[tauri::command]
+pub fn save_wechat_token(
+    state: State<'_, AppState>,
+    token: String,
+    base_url: Option<String>,
+) -> Result<(), String> {
+    let mut settings = state.settings.lock().unwrap().clone();
+    settings.wechat.token = token;
+    if let Some(url) = base_url {
+        settings.wechat.base_url = url;
+    }
+    crate::config::save_settings(&settings)?;
+    *state.settings.lock().unwrap() = settings;
+    Ok(())
+}

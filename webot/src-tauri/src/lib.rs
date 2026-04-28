@@ -19,6 +19,7 @@ pub fn run() {
             commands::get_settings,
             commands::fetch_wechat_qr,
             commands::poll_qr_status,
+            commands::save_wechat_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
