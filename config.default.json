@@ -1,0 +1,19 @@
+{
+  "provider": {
+    "base_url": "http://localhost:11434/v1",
+    "api_key": "ollama",
+    "model": "gemma4:e2b",
+    "verify_ssl": false,
+    "timeout": 60
+  },
+  "agent": {
+    "system_prompt": "You are a helpful assistant.",
+    "max_context_messages": 20
+  },
+  "wechat": {
+    "base_url": "",
+    "verify_ssl": true,
+    "state_dir": "./config/wechat_state",
+    "poll_timeout": 30
+  }
+}
