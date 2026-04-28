@@ -5,3 +5,9 @@ config/wechat_state/
 .venv/
 .env
 artifacts/
+
+# Tauri / Node
+node_modules/
+build/
+.svelte-kit/
+src-tauri/target/

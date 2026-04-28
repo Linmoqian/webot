@@ -33,13 +33,13 @@
       let currentTool: Message["toolCalls"] extends (infer T)[] | undefined ? T : never | undefined;
       for await (const event of streamChat(text)) {
         if (event.type === "text") {
-          reply.content += (event.data.text as string) || "";
+          reply.content += (event.data.content as string) || "";
         } else if (event.type === "tool_call") {
           currentTool = { name: (event.data.name as string) || "", args: JSON.stringify(event.data.arguments, null, 2) };
           reply.toolCalls!.push(currentTool);
         } else if (event.type === "tool_result" && currentTool) {
           currentTool.result = typeof event.data.output === "string" ? event.data.output : JSON.stringify(event.data.output, null, 2);
-          currentTool.error = event.data.error === true;
+          currentTool.error = event.data.success !== true;
         } else if (event.type === "error") {
           reply.content += `[error] ${event.data.message || "unknown"}`;
         }
