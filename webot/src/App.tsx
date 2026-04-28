@@ -64,6 +64,7 @@ function App() {
         if (status === "confirmed") {
           setQrStatus("confirmed");
           stopQrPoll();
+          setTimeout(() => closeQrModal(), 800);
         } else if (status === "expired") {
           setQrStatus("expired");
           stopQrPoll();
