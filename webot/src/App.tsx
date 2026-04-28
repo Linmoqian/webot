@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -33,6 +33,11 @@ function App() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [wechatConnected, setWechatConnected] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({
+    base_url: "", model: "", api_key: "", system_prompt: "", max_context_messages: 20,
+  });
+  const [settingsSaving, setSettingsSaving] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -125,6 +130,42 @@ function App() {
     setQrData("");
     qrIdRef.current = "";
   }, [stopQrPoll]);
+
+  const openSettingsModal = useCallback(() => {
+    invoke<{
+      provider: { base_url: string; model: string; api_key: string };
+      agent: { system_prompt: string; max_context_messages: number };
+      wechat: { base_url: string; token: string };
+    }>("get_settings").then(s => {
+      setSettingsForm({
+        base_url: s.provider.base_url,
+        model: s.provider.model,
+        api_key: s.provider.api_key,
+        system_prompt: s.agent.system_prompt,
+        max_context_messages: s.agent.max_context_messages,
+      });
+      setShowSettingsModal(true);
+    }).catch(() => {});
+  }, []);
+
+  const saveSettings = useCallback(() => {
+    setSettingsSaving(true);
+    invoke<{
+      provider: { base_url: string; model: string; api_key: string; verify_ssl: boolean; timeout: number };
+      agent: { system_prompt: string; max_context_messages: number };
+      wechat: { base_url: string; token: string };
+    }>("get_settings").then(current => {
+      const updated = {
+        ...current,
+        provider: { ...current.provider, base_url: settingsForm.base_url, model: settingsForm.model, api_key: settingsForm.api_key },
+        agent: { ...current.agent, system_prompt: settingsForm.system_prompt, max_context_messages: settingsForm.max_context_messages },
+      };
+      invoke("update_settings", { settings: updated }).then(() => {
+        setSettingsSaving(false);
+        setShowSettingsModal(false);
+      }).catch(() => setSettingsSaving(false));
+    }).catch(() => setSettingsSaving(false));
+  }, [settingsForm]);
 
   const sendChatMessage = async (userMessage: string) => {
     setMessages(prev => [
@@ -232,6 +273,9 @@ function App() {
           </div>
           <button className="qr-header-btn" onClick={openQrModal} title="微信登录">
             <QrCode size={20} />
+          </button>
+          <button className="settings-header-btn" onClick={openSettingsModal} title="模型设置">
+            <Settings size={20} />
           </button>
           <button
             className={`wechat-toggle-btn ${wechatConnected ? "connected" : ""}`}
@@ -389,6 +433,72 @@ function App() {
                   <button className="qr-refresh-btn" onClick={openQrModal}>重试</button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettingsModal && (
+        <div className="qr-modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="qr-modal settings-modal" onClick={e => e.stopPropagation()}>
+            <button className="qr-modal-close" onClick={() => setShowSettingsModal(false)}>
+              <X size={18} />
+            </button>
+            <h3 className="qr-modal-title">模型设置</h3>
+            <div className="settings-form">
+              <label className="settings-label">
+                <span>Base URL</span>
+                <input
+                  type="text"
+                  value={settingsForm.base_url}
+                  onChange={e => setSettingsForm(prev => ({ ...prev, base_url: e.target.value }))}
+                  placeholder="https://api.openai.com/v1"
+                />
+              </label>
+              <label className="settings-label">
+                <span>模型</span>
+                <input
+                  type="text"
+                  value={settingsForm.model}
+                  onChange={e => setSettingsForm(prev => ({ ...prev, model: e.target.value }))}
+                  placeholder="gpt-4o"
+                />
+              </label>
+              <label className="settings-label">
+                <span>API Key</span>
+                <input
+                  type="password"
+                  value={settingsForm.api_key}
+                  onChange={e => setSettingsForm(prev => ({ ...prev, api_key: e.target.value }))}
+                  placeholder="sk-..."
+                />
+              </label>
+              <label className="settings-label">
+                <span>系统提示词</span>
+                <textarea
+                  value={settingsForm.system_prompt}
+                  onChange={e => setSettingsForm(prev => ({ ...prev, system_prompt: e.target.value }))}
+                  placeholder="You are a helpful assistant."
+                  rows={3}
+                />
+              </label>
+              <label className="settings-label">
+                <span>上下文消息数</span>
+                <input
+                  type="number"
+                  value={settingsForm.max_context_messages}
+                  onChange={e => setSettingsForm(prev => ({ ...prev, max_context_messages: Number(e.target.value) || 20 }))}
+                  min={1}
+                  max={100}
+                />
+              </label>
+              <button
+                className="settings-save-btn"
+                onClick={saveSettings}
+                disabled={settingsSaving}
+              >
+                {settingsSaving ? <Loader2 size={16} className="spinner" /> : "保存"}
+              </button>
             </div>
           </div>
         </div>

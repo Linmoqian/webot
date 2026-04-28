@@ -19,6 +19,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::start_chat,
             commands::get_settings,
+            commands::update_settings,
             commands::fetch_wechat_qr,
             commands::poll_qr_status,
             commands::save_wechat_token,

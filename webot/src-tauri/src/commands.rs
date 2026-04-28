@@ -406,6 +406,16 @@ pub async fn start_wechat_listener(
 }
 
 #[tauri::command]
+pub fn update_settings(
+    state: State<'_, AppState>,
+    settings: crate::config::Settings,
+) -> Result<(), String> {
+    crate::config::save_settings(&settings)?;
+    *state.settings.lock().unwrap() = settings;
+    Ok(())
+}
+
+#[tauri::command]
 pub fn stop_wechat_listener(state: State<'_, AppState>) -> Result<(), String> {
     if let Some(tx) = state.wechat_stop_tx.lock().unwrap().take() {
         let _ = tx.send(true);
