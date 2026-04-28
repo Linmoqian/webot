@@ -4,59 +4,72 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Webot — 超轻量化 agent 框架，集成了微信机器人能力。采用 Python 后端 + Tauri 2.x 桌面前端的混合架构。
+Webot — 超轻量化 agent 框架。Tauri 2.x 桌面应用，Rust 后端直接调用 OpenAI 兼容 LLM API，React 前端展示对话。
 
 ## Architecture
 
 ```
-Python Backend (aiohttp, port 18180)
-  ├── server.py          → HTTP API + SSE 流式推送
-  ├── wechat_gateway.py  → 微信长轮询网关（按用户创建 agent 实例）
-  ├── weixin.py           → 微信协议逆向实现（ilinkai API）
-  └── agent/config/session/skills/tools  → 核心模块（外部引入）
-
-Tauri Desktop App (webot/)
-  ├── src/App.tsx         → React 聊天界面，含思考链折叠展示
-  ├── src/App.css         → CSS 变量驱动的现代 UI
-  └── src-tauri/          → Rust 层（Tauri 2.x，目前仅有骨架代码）
+webot/
+├── src/                          # React 前端
+│   ├── App.tsx                   → 聊天界面（invoke + listen 通信）
+│   ├── App.css                   → CSS 暗色主题通过 [data-theme="dark"] 切换
+│   ├── i18n.tsx                  → 国际化（中/英），useI18n hook + I18nProvider
+│   └── main.tsx                  → React 入口，I18nProvider 包裹 App
+├── src-tauri/                    # Rust 后端（Tauri 2.x）
+│   └── src/
+│       ├── lib.rs                → 应用入口，注册命令和状态
+│       ├── commands.rs           → Tauri 命令（start_chat, get_settings）
+│       ├── llm.rs                → SSE 流式请求 LLM API，emit 事件到前端
+│       ├── config.rs             → 从 config.json 加载配置
+│       └── main.rs               → 程序入口
+└── config.json                   → LLM 配置（base_url, model, api_key, system_prompt）
 ```
 
-前端通过 SSE (`POST /chat`) 与后端通信，事件类型：`text`、`thinking`、`tool_call`、`tool_result`、`done`、`error`。
+### 通信流程
+
+```
+React 前端
+  → invoke("start_chat", { message })
+Rust 后端（commands.rs）
+  → tokio::spawn → llm.rs stream_and_emit()
+  → POST {base_url}/chat/completions（SSE 流式）
+  → 解析 delta → emit("chat-thinking" / "chat-text" / "chat-done" / "chat-error")
+React 前端
+  → listen() 接收事件，实时更新 UI
+```
+
+### 事件类型
+
+| Event | Payload | 说明 |
+|-------|---------|------|
+| `chat-thinking` | `{ content }` | 思维链内容（reasoning_content） |
+| `chat-text` | `{ content }` | 正文内容 |
+| `chat-done` | `{}` | 完成 |
+| `chat-error` | `{ message }` | 错误 |
 
 ## Commands
 
 ```bash
-# Python 后端
-python server.py                 # HTTP API 服务，端口 18180
-python -m cli                    # 终端 REPL
-python wechat_gateway.py         # 微信网关（首次需扫码）
-
-# Tauri 前端（在 webot/ 目录下）
+# 开发
 cd webot && npm run dev          # Vite 开发服务器（端口 1420）
 cd webot && npm run tauri dev    # Tauri 完整开发模式
+
+# 构建
 cd webot && npm run build        # TypeScript 编译 + Vite 构建
 cd webot && npm run tauri build  # Tauri 生产构建
 ```
 
-## API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/health` | 健康检查 |
-| POST | `/chat` | SSE 流式对话 |
-| GET | `/wechat/status` | 微信连接状态 |
-| POST | `/wechat/qr` | 获取微信登录二维码 |
-| GET | `/wechat/qr_status?session_id=` | 轮询扫码状态 |
-| POST | `/wechat/gateway/start` | 启动微信网关 |
-
 ## Key Technical Details
 
-- SSE 数据格式：`event: <type>\ndata: <json>\n\n`，前端需用 `EventSource` 或 `fetch` + `ReadableStream` 解析
-- 微信状态持久化到 `config/wechat_state/account.json`（token、base_url）
-- 前端目前使用模拟数据（`simulateStream`），尚未接入真实后端 API
-- Python 后端依赖：`aiohttp`、`httpx`；无 requirements.txt，通过 conda 环境管理
-- Tauri CSP 已设为 `null`（开发阶段）
+- 前端通过 `@tauri-apps/api` 的 `invoke` / `listen` 与 Rust 后端通信
+- Rust 后端用 `reqwest` + `futures_util` 处理 SSE 流式响应
+- 支持 `reasoning_content` 字段（思维链），前端可折叠展示
+- 前端 Markdown 渲染：react-markdown + remark-gfm + remark-math + rehype-highlight + rehype-katex
+- 配置文件 `config.json` 支持多路径查找（当前目录 → ../ → ../../）
+- `danger_accept_invalid_certs(true)` 用于开发环境跳过 SSL 验证
+- 国际化：`src/i18n.tsx` 提供中/英翻译字典，通过 `useI18n()` hook 的 `t()` 函数访问
+- 主题切换：通过 `document.documentElement.setAttribute("data-theme", ...)` 实现，CSS 用 `[data-theme="dark"]` 选择器覆盖暗色样式，偏好存 localStorage
 
 ## Current State
 
-项目处于早期原型阶段：前端聊天 UI 已成型但未连接后端，Python 核心模块（agent/config/session/skills/tools）通过 import 引用但不在本仓库内。
+前后端已连通，可进行完整对话。核心功能：流式对话、思维链展示、Markdown 渲染（含代码高亮和 LaTeX）、主题切换（浅色/深色/跟随系统）、中英文切换。
