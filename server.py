@@ -8,6 +8,24 @@ from typing import AsyncGenerator
 
 from aiohttp import web
 
+
+# ── CORS 中间件 ─────────────────────────────────────────────────
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
+
+@web.middleware
+async def cors_middleware(request: web.Request, handler: object) -> web.StreamResponse:
+    if request.method == "OPTIONS":
+        return web.Response(headers=CORS_HEADERS)
+    resp = await handler(request)
+    resp.headers.update(CORS_HEADERS)
+    return resp
+
 from agent import Agent, TextDelta, ToolCall, ToolResult
 from config.providers import OpenAIProvider
 from config.settings import load_settings
@@ -86,7 +104,7 @@ async def chat(request: web.Request) -> web.StreamResponse:
 # ── 启动 ────────────────────────────────────────────────────────
 
 def create_app() -> web.Application:
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.router.add_get("/health", health)
     app.router.add_post("/chat", chat)
     return app
