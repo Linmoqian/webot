@@ -668,6 +668,18 @@ textarea::placeholder {
 .wechat-toggle-btn.connected .wechat-dot {
   background: #22c55e;
   box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+  animation: breathe 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(34, 197, 94, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.7), 0 0 20px rgba(34, 197, 94, 0.3);
+    transform: scale(1.15);
+  }
 }
 
 /* QR modal */
@@ -918,7 +930,21 @@ textarea::placeholder {
 
   .wechat-toggle-btn { border-color: #333; }
   .wechat-dot { background: #555; }
-  .wechat-toggle-btn.connected .wechat-dot { background: #3fb950; }
+  .wechat-toggle-btn.connected .wechat-dot {
+    background: #3fb950;
+    animation: breathe-dark 2s ease-in-out infinite;
+  }
+
+  @keyframes breathe-dark {
+    0%, 100% {
+      box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(63, 185, 80, 0.7), 0 0 20px rgba(63, 185, 80, 0.3);
+      transform: scale(1.15);
+    }
+  }
 
   .qr-modal { background: #232323; }
   .qr-modal-close { color: #888; }
