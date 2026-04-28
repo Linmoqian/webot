@@ -691,6 +691,12 @@ textarea::placeholder {
   max-width: 400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.qr-modal::-webkit-scrollbar {
+  display: none;
 }
 
 .qr-modal-close {
