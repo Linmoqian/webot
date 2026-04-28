@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
+import { QRCodeSVG } from "qrcode.react";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
 import "./App.css";
@@ -24,6 +25,12 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrData, setQrData] = useState<string>("");
+  const [qrStatus, setQrStatus] = useState<"loading" | "waiting" | "scanned" | "confirmed" | "expired" | "error">("loading");
+  const [qrError, setQrError] = useState("");
+  const qrIdRef = useRef<string>("");
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -35,10 +42,74 @@ function App() {
   }, [messages]);
 
   const toggleReasoning = (index: number) => {
-    setMessages(prev => prev.map((msg, i) => 
+    setMessages(prev => prev.map((msg, i) =>
       i === index ? { ...msg, showReasoning: !msg.showReasoning } : msg
     ));
   };
+
+  const stopQrPoll = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  const pollQrStatus = useCallback(() => {
+    const id = qrIdRef.current;
+    if (!id) return;
+
+    invoke<{ status?: string; bot_token?: string }>("poll_qr_status", { qrcodeId: id })
+      .then(data => {
+        const status = data.status;
+        if (status === "confirmed") {
+          setQrStatus("confirmed");
+          stopQrPoll();
+        } else if (status === "expired") {
+          setQrStatus("expired");
+          stopQrPoll();
+        } else if (status === "scaned_but_redirect") {
+          setQrStatus("scanned");
+          pollTimerRef.current = setTimeout(pollQrStatus, 1500);
+        } else {
+          pollTimerRef.current = setTimeout(pollQrStatus, 1500);
+        }
+      })
+      .catch(() => {
+        pollTimerRef.current = setTimeout(pollQrStatus, 2000);
+      });
+  }, [stopQrPoll]);
+
+  const openQrModal = useCallback(() => {
+    setShowQrModal(true);
+    setQrStatus("loading");
+    setQrError("");
+    setQrData("");
+
+    invoke<{ qrcode_img_content?: string; qrcode?: string }>("fetch_wechat_qr")
+      .then(data => {
+        const content = data.qrcode_img_content || data.qrcode || "";
+        if (!content) {
+          setQrStatus("error");
+          setQrError("未获取到二维码数据");
+          return;
+        }
+        qrIdRef.current = data.qrcode || "";
+        setQrData(content);
+        setQrStatus("waiting");
+        pollTimerRef.current = setTimeout(pollQrStatus, 1500);
+      })
+      .catch(err => {
+        setQrStatus("error");
+        setQrError(String(err));
+      });
+  }, [pollQrStatus]);
+
+  const closeQrModal = useCallback(() => {
+    stopQrPoll();
+    setShowQrModal(false);
+    setQrData("");
+    qrIdRef.current = "";
+  }, [stopQrPoll]);
 
   const sendChatMessage = async (userMessage: string) => {
     setMessages(prev => [
@@ -144,6 +215,9 @@ function App() {
             <h2>Nexus AI</h2>
             <span className="badge">Beta</span>
           </div>
+          <button className="qr-header-btn" onClick={openQrModal} title="微信登录">
+            <QrCode size={20} />
+          </button>
         </header>
         
         <div className="chat-scroll-area">
@@ -250,6 +324,53 @@ function App() {
           </div>
         </div>
       </div>
+
+      {showQrModal && (
+        <div className="qr-modal-overlay" onClick={closeQrModal}>
+          <div className="qr-modal" onClick={e => e.stopPropagation()}>
+            <button className="qr-modal-close" onClick={closeQrModal}>
+              <X size={18} />
+            </button>
+            <h3 className="qr-modal-title">微信扫码登录</h3>
+            <div className="qr-modal-body">
+              {qrStatus === "loading" && (
+                <div className="qr-loading">
+                  <Loader2 size={32} className="spinner" />
+                  <p>获取二维码中...</p>
+                </div>
+              )}
+              {qrStatus === "waiting" && qrData && (
+                <div className="qr-code-wrapper">
+                  <QRCodeSVG value={qrData} size={200} level="M" />
+                  <p className="qr-hint">请使用微信扫描二维码</p>
+                </div>
+              )}
+              {qrStatus === "scanned" && (
+                <div className="qr-status-info scanned">
+                  <p>已扫描，请在手机上确认登录</p>
+                </div>
+              )}
+              {qrStatus === "confirmed" && (
+                <div className="qr-status-info confirmed">
+                  <p>登录成功</p>
+                </div>
+              )}
+              {qrStatus === "expired" && (
+                <div className="qr-status-info expired">
+                  <p>二维码已过期</p>
+                  <button className="qr-refresh-btn" onClick={openQrModal}>刷新二维码</button>
+                </div>
+              )}
+              {qrStatus === "error" && (
+                <div className="qr-status-info error">
+                  <p>{qrError || "获取二维码失败"}</p>
+                  <button className="qr-refresh-btn" onClick={openQrModal}>重试</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

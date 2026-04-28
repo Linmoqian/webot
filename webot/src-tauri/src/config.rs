@@ -67,12 +67,32 @@ impl Default for AgentConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WechatConfig {
+    #[serde(default = "default_wechat_base_url")]
+    pub base_url: String,
+}
+
+fn default_wechat_base_url() -> String {
+    "https://ilinkai.weixin.qq.com".into()
+}
+
+impl Default for WechatConfig {
+    fn default() -> Self {
+        Self {
+            base_url: default_wechat_base_url(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     #[serde(default)]
     pub provider: ProviderConfig,
     #[serde(default)]
     pub agent: AgentConfig,
+    #[serde(default)]
+    pub wechat: WechatConfig,
 }
 
 fn find_config() -> Option<std::path::PathBuf> {

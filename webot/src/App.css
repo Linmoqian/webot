@@ -531,6 +531,147 @@ textarea::placeholder {
   to { transform: rotate(360deg); }
 }
 
+/* QR code header button */
+.qr-header-btn {
+  background: none;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 6px;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.qr-header-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* QR modal */
+.qr-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.qr-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  position: relative;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+.qr-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.qr-modal-close:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.qr-modal-title {
+  margin: 0 0 24px;
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.qr-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 200px;
+  justify-content: center;
+}
+
+.qr-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #888;
+}
+
+.qr-loading p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.qr-code-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.qr-code-wrapper svg {
+  border-radius: 8px;
+}
+
+.qr-hint {
+  margin: 0;
+  font-size: 13px;
+  color: #888;
+}
+
+.qr-status-info {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-status-info p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.qr-status-info.scanned p { color: #2563eb; }
+.qr-status-info.confirmed p { color: #16a34a; }
+.qr-status-info.expired p { color: #d97706; }
+.qr-status-info.error p { color: #dc2626; }
+
+.qr-refresh-btn {
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.qr-refresh-btn:hover {
+  background: #333;
+}
+
 /* Dark mode - sleek implementation */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -628,5 +769,20 @@ textarea::placeholder {
   .send-button { background: #333; color: #666; }
   .send-button.active { background: white; color: black; }
   .send-button.active:hover { background: #e5e5e5; }
+
+  .qr-header-btn { border-color: #333; color: #999; }
+  .qr-header-btn:hover { background: #2a2a2a; color: #e5e5e5; }
+
+  .qr-modal { background: #232323; }
+  .qr-modal-close { color: #888; }
+  .qr-modal-close:hover { background: #333; color: #e5e5e5; }
+  .qr-modal-title { color: #e5e5e5; }
+  .qr-hint { color: #888; }
+  .qr-status-info.scanned p { color: #58a6ff; }
+  .qr-status-info.confirmed p { color: #3fb950; }
+  .qr-status-info.expired p { color: #d29922; }
+  .qr-status-info.error p { color: #f85149; }
+  .qr-refresh-btn { background: white; color: black; }
+  .qr-refresh-btn:hover { background: #e5e5e5; }
 }
 
