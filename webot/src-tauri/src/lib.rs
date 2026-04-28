@@ -1,6 +1,7 @@
 mod commands;
 mod config;
 mod llm;
+mod media;
 
 use commands::AppState;
 
@@ -25,6 +26,7 @@ pub fn run() {
             commands::save_wechat_token,
             commands::start_wechat_listener,
             commands::stop_wechat_listener,
+            commands::send_media,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

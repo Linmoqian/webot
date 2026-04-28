@@ -147,7 +147,7 @@ pub fn save_wechat_token(
     Ok(())
 }
 
-fn build_auth_headers(token: &str) -> reqwest::header::HeaderMap {
+pub(crate) fn build_auth_headers(token: &str) -> reqwest::header::HeaderMap {
     let mut headers = build_wechat_headers();
     if !token.is_empty() {
         headers.insert(
@@ -424,4 +424,38 @@ pub fn stop_wechat_listener(state: State<'_, AppState>) -> Result<(), String> {
         handle.abort();
     }
     Ok(())
+}
+
+#[tauri::command]
+pub async fn send_media(
+    state: State<'_, AppState>,
+    to_user_id: String,
+    file_path: String,
+) -> Result<(), String> {
+    let settings = state.settings.lock().unwrap().clone();
+    let token = settings.wechat.token.clone();
+    let base_url = settings.wechat.base_url.clone();
+    if token.is_empty() {
+        return Err("WeChat 未登录".into());
+    }
+
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let auth_headers = build_auth_headers(&token);
+    let base_info = serde_json::json!({"channel_version": "2.1.1"});
+
+    crate::media::send_media_file(
+        &client,
+        &base_url,
+        &auth_headers,
+        &to_user_id,
+        "",
+        &file_path,
+        &base_info,
+    )
+    .await
 }
