@@ -169,6 +169,9 @@ pub async fn start_wechat_listener(
         return Err("未登录微信，请先扫码登录".into());
     }
     let base_url = settings.wechat.base_url.clone();
+    let provider_config = settings.provider.clone();
+    let system_prompt = settings.agent.system_prompt.clone();
+    let max_context = settings.agent.max_context_messages;
 
     // Stop existing listener if any
     {
@@ -192,6 +195,7 @@ pub async fn start_wechat_listener(
 
         let mut cursor = String::new();
         let mut context_tokens: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut user_histories: std::collections::HashMap<String, Vec<Value>> = std::collections::HashMap::new();
         let base_info = serde_json::json!({"channel_version": "2.1.1"});
 
         let _ = app.emit("wechat-status", serde_json::json!({"status": "connected"}));
@@ -293,7 +297,23 @@ pub async fn start_wechat_listener(
                             "text": text,
                         }));
 
-                        // Auto-reply "收到"
+                        // Build LLM messages for this user
+                        let history = user_histories.entry(from_user.to_string()).or_default();
+                        history.push(serde_json::json!({"role": "user", "content": text}));
+                        let start = if history.len() > max_context { history.len() - max_context } else { 0 };
+                        let mut llm_msgs = vec![serde_json::json!({"role": "system", "content": &system_prompt})];
+                        llm_msgs.extend(history[start..].to_vec());
+
+                        // Call LLM
+                        let reply = match crate::llm::call_llm(&provider_config, &llm_msgs).await {
+                            Ok(r) => r,
+                            Err(e) => format!("AI 回复失败: {e}"),
+                        };
+
+                        // Save assistant reply to history
+                        history.push(serde_json::json!({"role": "assistant", "content": &reply}));
+
+                        // Send reply via WeChat
                         let reply_body = serde_json::json!({
                             "msg": {
                                 "from_user_id": "",
@@ -301,7 +321,7 @@ pub async fn start_wechat_listener(
                                 "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
                                 "message_type": 2,
                                 "message_state": 2,
-                                "item_list": [{"type": 1, "text_item": {"text": "收到"}}],
+                                "item_list": [{"type": 1, "text_item": {"text": reply}}],
                                 "context_token": context_tokens.get(from_user).cloned().unwrap_or_default(),
                             },
                             "base_info": base_info,
