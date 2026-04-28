@@ -23,16 +23,45 @@ export async function* streamChat(message: string): AsyncGenerator<ChatEvent> {
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
+    // SSE 以 \n\n 分隔事件块
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() || "";
 
+    for (const block of blocks) {
+      if (!block.trim()) continue;
+      let eventType = "";
+      let dataStr = "";
+      for (const line of block.split("\n")) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          dataStr = line.slice(6);
+        }
+      }
+      if (eventType && dataStr) {
+        try {
+          const data = JSON.parse(dataStr);
+          yield { type: eventType as ChatEvent["type"], data };
+        } catch {
+          // skip malformed
+        }
+      }
+    }
+  }
+
+  // 处理 buffer 中剩余内容
+  if (buffer.trim()) {
     let eventType = "";
-    for (const line of lines) {
-      if (line.startsWith("event: ")) {
-        eventType = line.slice(7);
-      } else if (line.startsWith("data: ")) {
-        const data = JSON.parse(line.slice(6));
-        yield { type: eventType as ChatEvent["type"], data };
+    let dataStr = "";
+    for (const line of buffer.split("\n")) {
+      if (line.startsWith("event: ")) eventType = line.slice(7).trim();
+      else if (line.startsWith("data: ")) dataStr = line.slice(6);
+    }
+    if (eventType && dataStr) {
+      try {
+        yield { type: eventType as ChatEvent["type"], data: JSON.parse(dataStr) };
+      } catch {
+        // skip
       }
     }
   }

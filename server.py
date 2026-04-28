@@ -94,10 +94,18 @@ async def chat(request: web.Request) -> web.StreamResponse:
                 case ToolResult(name=name, output=output, success=success):
                     await _sse(resp, "tool_result", {"name": name, "output": output, "success": success})
         await _sse(resp, "done", {})
+    except ConnectionResetError:
+        return resp
     except Exception as exc:
-        await _sse(resp, "error", {"message": str(exc)})
+        try:
+            await _sse(resp, "error", {"message": str(exc)})
+        except ConnectionResetError:
+            pass
 
-    await resp.write_eof()
+    try:
+        await resp.write_eof()
+    except ConnectionResetError:
+        pass
     return resp
 
 
