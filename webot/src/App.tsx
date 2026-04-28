@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import rehypeKatex from "rehype-katex";
+import "highlight.js/styles/github.css";
+import "katex/dist/katex.min.css";
 import "./App.css";
 
 interface Message {
@@ -186,7 +192,12 @@ function App() {
                     
                     {msg.content && (
                       <div className="message-text">
-                        {msg.content}
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight, rehypeKatex]}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       </div>
                     )}
                     

@@ -199,8 +199,114 @@ body {
   font-size: 15px;
   line-height: 1.6;
   color: #1f1f1f;
-  white-space: pre-wrap;
   word-wrap: break-word;
+}
+
+/* Markdown rendered content */
+.message-text h1,
+.message-text h2,
+.message-text h3,
+.message-text h4,
+.message-text h5,
+.message-text h6 {
+  margin: 16px 0 8px;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.message-text h1 { font-size: 1.4em; }
+.message-text h2 { font-size: 1.25em; }
+.message-text h3 { font-size: 1.1em; }
+
+.message-text p {
+  margin: 0 0 12px;
+}
+
+.message-text p:last-child {
+  margin-bottom: 0;
+}
+
+.message-text ul,
+.message-text ol {
+  margin: 0 0 12px;
+  padding-left: 24px;
+}
+
+.message-text li {
+  margin-bottom: 4px;
+}
+
+.message-text blockquote {
+  margin: 0 0 12px;
+  padding: 8px 16px;
+  border-left: 3px solid #d0d0d0;
+  color: #555;
+  background: #fafafa;
+  border-radius: 0 6px 6px 0;
+}
+
+.message-text code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 2px 6px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  color: #d63384;
+}
+
+.message-text pre {
+  margin: 0 0 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.message-text pre code {
+  display: block;
+  padding: 14px 18px;
+  background: #f6f8fa;
+  color: #1f1f1f;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  border: 1px solid #e5e5e5;
+}
+
+.message-text table {
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.message-text th,
+.message-text td {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-text th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+.message-text a {
+  color: #0969da;
+  text-decoration: none;
+}
+
+.message-text a:hover {
+  text-decoration: underline;
+}
+
+.message-text hr {
+  border: none;
+  border-top: 1px solid #e5e5e5;
+  margin: 16px 0;
+}
+
+.message-text img {
+  max-width: 100%;
+  border-radius: 8px;
 }
 
 /* Reasoning block modernization */
@@ -432,6 +538,40 @@ textarea::placeholder {
   .message-sender-name { color: #e5e5e5; }
   .message-row.user .message-sender-name { color: white; }
   .message-text { color: #d4d4d4; }
+
+  .message-text blockquote {
+    border-left-color: #555;
+    color: #aaa;
+    background: #1e1e1e;
+  }
+
+  .message-text code {
+    background: #2a2a2a;
+    color: #f47067;
+  }
+
+  .message-text pre code {
+    background: #161b22;
+    color: #d4d4d4;
+    border-color: #333;
+  }
+
+  .message-text th {
+    background: #232323;
+  }
+
+  .message-text th,
+  .message-text td {
+    border-color: #333;
+  }
+
+  .message-text a {
+    color: #58a6ff;
+  }
+
+  .message-text hr {
+    border-color: #333;
+  }
   
   .reasoning-block {
     background: #1e1e1e;
