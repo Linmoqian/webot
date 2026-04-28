@@ -573,8 +573,9 @@ textarea::placeholder {
 
 /* Settings modal */
 .settings-modal {
-  max-width: 460px;
-  width: 100%;
+  width: 85vw;
+  max-width: 420px;
+  max-height: 75vh;
 }
 
 .settings-form {
@@ -689,6 +690,7 @@ textarea::placeholder {
   min-width: 320px;
   max-width: 400px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
 }
 
 .qr-modal-close {
