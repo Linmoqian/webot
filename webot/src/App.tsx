@@ -31,60 +31,116 @@ function App() {
     ));
   };
 
-  const simulateStream = async (userMessage: string) => {
-    setMessages((prev) => [
+  const API_URL = "http://localhost:18180/chat";
+
+  const sendChatMessage = async (userMessage: string) => {
+    setMessages(prev => [
       ...prev,
-      { role: "user", content: userMessage },
-      { role: "agent", content: "", reasoning_content: "", isThinking: true, isFinished: false, showReasoning: true }
+      { role: "user" as const, content: userMessage },
+      { role: "agent" as const, content: "", reasoning_content: "", isThinking: false, isFinished: false, showReasoning: false }
     ]);
 
-    const thoughts = [
-      "分析用户的输入意图...",
-      "搜索系统上下文中相关的概念...",
-      "结合业务场景进行多维度的论证...",
-      "提取核心要点，准备组织回答...",
-      "思绪整理完毕，开始准备最终的文字。"
-    ];
-    
-    const responseText = "您好！这是一段模拟了现代 AI 推理流的交互。在呈现内容前，我会在内部进行一段详细的「思维链」梳理，帮助我给您更准确、更有逻辑的回答。希望这个现代化的界面能够满足您的需求！";
-
-    // Simulate thinking stream
-    for (let i = 0; i < thoughts.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      setMessages((prev) => {
-        const newMsg = [...prev];
-        const lastMsg = newMsg[newMsg.length - 1];
-        lastMsg.reasoning_content = (lastMsg.reasoning_content || "") + thoughts[i] + "\n";
-        return newMsg;
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage }),
       });
-    }
 
-    // Thinking ends
-    setMessages((prev) => {
-      const newMsg = [...prev];
-      const lastMsg = newMsg[newMsg.length - 1];
-      lastMsg.isThinking = false;
-      lastMsg.showReasoning = false; // Auto collapse when done thinking
-      return newMsg;
-    });
+      if (!response.ok || !response.body) throw new Error("请求失败");
 
-    const chars = responseText.split("");
-    for (let i = 0; i < chars.length; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 30));
-      setMessages((prev) => {
-        const newMsg = [...prev];
-        const lastMsg = newMsg[newMsg.length - 1];
-        lastMsg.content += chars[i];
-        return newMsg;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() || "";
+
+        for (const part of parts) {
+          if (!part.trim()) continue;
+          let eventType = "";
+          let eventData = "{}";
+
+          for (const line of part.split("\n")) {
+            if (line.startsWith("event: ")) eventType = line.slice(7);
+            else if (line.startsWith("data: ")) eventData = line.slice(6);
+          }
+
+          try {
+            const data = JSON.parse(eventData);
+            switch (eventType) {
+              case "text":
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = { ...last, content: last.content + (data.content || "") };
+                  return updated;
+                });
+                break;
+              case "thinking":
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = {
+                    ...last,
+                    reasoning_content: (last.reasoning_content || "") + (data.content || ""),
+                    isThinking: true,
+                    showReasoning: true,
+                  };
+                  return updated;
+                });
+                break;
+              case "done":
+                setMessages(prev => {
+                  const updated = [...prev];
+                  const last = updated[updated.length - 1];
+                  updated[updated.length - 1] = {
+                    ...last,
+                    isFinished: true,
+                    isThinking: false,
+                    showReasoning: false,
+                  };
+                  return updated;
+                });
+                setIsLoading(false);
+                break;
+              case "error":
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = {
+                    ...updated[updated.length - 1],
+                    content: "错误: " + (data.message || "未知错误"),
+                    isFinished: true,
+                    isThinking: false,
+                  };
+                  return updated;
+                });
+                setIsLoading(false);
+                break;
+            }
+          } catch {
+            // JSON 解析失败，跳过
+          }
+        }
+      }
+    } catch {
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: "连接失败，请检查后端服务是否启动 (http://localhost:18180)",
+          isFinished: true,
+          isThinking: false,
+        };
+        return updated;
       });
+      setIsLoading(false);
     }
-
-    setMessages((prev) => {
-      const newMsg = [...prev];
-      newMsg[newMsg.length - 1].isFinished = true;
-      return newMsg;
-    });
-    setIsLoading(false);
   };
 
   const handleSend = () => {
@@ -92,7 +148,7 @@ function App() {
     const userText = input.trim();
     setInput("");
     setIsLoading(true);
-    simulateStream(userText);
+    sendChatMessage(userText);
   };
 
   return (
