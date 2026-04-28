@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -33,6 +33,8 @@ function App() {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [wechatConnected, setWechatConnected] = useState(false);
+  const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
+  const [showWechatLog, setShowWechatLog] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     base_url: "", model: "", api_key: "", system_prompt: "", max_context_messages: 20,
@@ -48,10 +50,15 @@ function App() {
   }, [messages]);
 
   useEffect(() => {
-    const unlisten = listen<{ status: string }>("wechat-status", event => {
+    const unlistenStatus = listen<{ status: string }>("wechat-status", event => {
       setWechatConnected(event.payload.status === "connected");
     });
-    return () => { unlisten.then(fn => fn()); };
+    const unlistenMsg = listen<{ from: string; text: string }>("wechat-message", event => {
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+      setWechatMessages(prev => [...prev.slice(-99), { from: event.payload.from, text: event.payload.text, time }]);
+    });
+    return () => { unlistenStatus.then(fn => fn()); unlistenMsg.then(fn => fn()); };
   }, []);
 
   const toggleReasoning = (index: number) => {
@@ -279,8 +286,8 @@ function App() {
           </button>
           <button
             className={`wechat-toggle-btn ${wechatConnected ? "connected" : ""}`}
-            onClick={() => invoke(wechatConnected ? "stop_wechat_listener" : "start_wechat_listener").catch(() => {})}
-            title={wechatConnected ? "断开微信" : "连接微信"}
+            onClick={() => setShowWechatLog(true)}
+            title={wechatConnected ? "微信消息日志" : "未连接微信"}
           >
             <span className="wechat-dot" />
           </button>
@@ -499,6 +506,33 @@ function App() {
               >
                 {settingsSaving ? <Loader2 size={16} className="spinner" /> : "保存"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWechatLog && (
+        <div className="qr-modal-overlay" onClick={() => setShowWechatLog(false)}>
+          <div className="qr-modal wechat-log-modal" onClick={e => e.stopPropagation()}>
+            <button className="qr-modal-close" onClick={() => setShowWechatLog(false)}>
+              <X size={18} />
+            </button>
+            <h3 className="qr-modal-title">微信消息日志</h3>
+            <div className="wechat-log-list">
+              {wechatMessages.length === 0 ? (
+                <div className="wechat-log-empty">
+                  <MessageCircle size={32} />
+                  <p>{wechatConnected ? "暂无消息" : "未连接微信"}</p>
+                </div>
+              ) : (
+                wechatMessages.map((msg, i) => (
+                  <div key={i} className="wechat-log-item">
+                    <span className="wechat-log-time">{msg.time}</span>
+                    <span className="wechat-log-from">{msg.from.slice(-8)}</span>
+                    <span className="wechat-log-text">{msg.text}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
