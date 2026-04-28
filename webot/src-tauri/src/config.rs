@@ -75,11 +75,17 @@ pub struct Settings {
     pub agent: AgentConfig,
 }
 
+fn find_config() -> Option<std::path::PathBuf> {
+    let candidates: Vec<std::path::PathBuf> = vec![
+        std::env::current_dir().unwrap_or_default().join("config.json"),
+        std::path::PathBuf::from("../config.json"),
+        std::env::current_dir().unwrap_or_default().join("../../config.json"),
+    ];
+    candidates.into_iter().find(|p| p.exists())
+}
+
 pub fn load_settings() -> Settings {
-    let path = std::env::current_dir()
-        .unwrap_or_default()
-        .join("config.json");
-    if path.exists() {
+    if let Some(path) = find_config() {
         let content = std::fs::read_to_string(&path).unwrap_or_default();
         serde_json::from_str(&content).unwrap_or_default()
     } else {
