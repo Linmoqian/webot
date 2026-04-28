@@ -1,13 +1,37 @@
+# Python
 __pycache__/
 *.pyc
-config/wechat_state/
+*.pyo
 *.egg-info/
 .venv/
 .env
+*.egg
+
+# Project specific
+config/wechat_state/
 artifacts/
 
-# Tauri / Node
+# Node / Frontend
 node_modules/
-build/
-.svelte-kit/
+dist/
+*.local
+
+# Tauri
 src-tauri/target/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
