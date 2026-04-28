@@ -813,50 +813,60 @@ textarea::placeholder {
 /* WeChat log modal */
 .wechat-log-modal {
   max-height: 70vh;
-  max-width: 480px;
+  max-width: 520px;
 }
 
 .wechat-log-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   max-height: 50vh;
   overflow-y: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .wechat-log-list::-webkit-scrollbar {
   display: none;
 }
 
-.wechat-log-item {
+.wechat-log-row {
   display: flex;
-  gap: 10px;
   align-items: flex-start;
-  font-size: 13px;
-  line-height: 1.5;
-  padding: 8px 10px;
-  background: #fafafa;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.wechat-log-row:last-child {
+  border-bottom: none;
 }
 
 .wechat-log-time {
-  color: #999;
-  font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #aaa;
   flex-shrink: 0;
-  padding-top: 1px;
+  width: 64px;
+  text-align: right;
+}
+
+.wechat-log-arrow {
+  color: #bbb;
+  flex-shrink: 0;
+  width: 12px;
+  text-align: center;
 }
 
 .wechat-log-from {
-  color: #0969da;
+  color: #2563eb;
   font-weight: 600;
   flex-shrink: 0;
-  max-width: 80px;
+  width: 72px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wechat-log-text {
@@ -1030,8 +1040,9 @@ textarea::placeholder {
 
   .wechat-log-modal { max-height: 70vh; }
   .wechat-log-list { max-height: 50vh; }
-  .wechat-log-item { border-color: #333; }
-  .wechat-log-time { color: #888; }
+  .wechat-log-row { border-color: #2a2a2a; }
+  .wechat-log-time { color: #666; }
+  .wechat-log-arrow { color: #555; }
   .wechat-log-from { color: #58a6ff; }
   .wechat-log-text { color: #d4d4d4; }
   .wechat-log-empty { color: #666; }

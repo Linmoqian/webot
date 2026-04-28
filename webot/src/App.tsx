@@ -526,8 +526,9 @@ function App() {
                 </div>
               ) : (
                 wechatMessages.map((msg, i) => (
-                  <div key={i} className="wechat-log-item">
+                  <div key={i} className="wechat-log-row">
                     <span className="wechat-log-time">{msg.time}</span>
+                    <span className="wechat-log-arrow">&#8594;</span>
                     <span className="wechat-log-from">{msg.from.slice(-8)}</span>
                     <span className="wechat-log-text">{msg.text}</span>
                   </div>
