@@ -297,23 +297,84 @@ pub async fn start_wechat_listener(
                             "text": text,
                         }));
 
-                        // Build LLM messages for this user
+                        let ctx_token = context_tokens.get(from_user).cloned().unwrap_or_default();
+
+                        // 1. Reply "正在思考..." immediately
+                        let thinking_body = serde_json::json!({
+                            "msg": {
+                                "from_user_id": "",
+                                "to_user_id": from_user,
+                                "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
+                                "message_type": 2,
+                                "message_state": 2,
+                                "item_list": [{"type": 1, "text_item": {"text": "正在思考..."}}],
+                                "context_token": &ctx_token,
+                            },
+                            "base_info": &base_info,
+                        });
+                        let _ = client
+                            .post(format!("{}/ilink/bot/sendmessage", base_url))
+                            .headers(build_auth_headers(&token))
+                            .json(&thinking_body)
+                            .send()
+                            .await;
+
+                        // 2. Send typing indicator
+                        let typing_ticket = match client
+                            .post(format!("{}/ilink/bot/getconfig", base_url))
+                            .headers(build_auth_headers(&token))
+                            .json(&serde_json::json!({
+                                "ilink_user_id": from_user,
+                                "context_token": ctx_token,
+                                "base_info": &base_info,
+                            }))
+                            .send().await
+                        {
+                            Ok(r) => r.json::<Value>().await.ok().and_then(|d| d.get("typing_ticket").and_then(|v| v.as_str()).map(String::from)).unwrap_or_default(),
+                            Err(_) => String::new(),
+                        };
+                        if !typing_ticket.is_empty() {
+                            let _ = client
+                                .post(format!("{}/ilink/bot/sendtyping", base_url))
+                                .headers(build_auth_headers(&token))
+                                .json(&serde_json::json!({
+                                    "ilink_user_id": from_user,
+                                    "typing_ticket": &typing_ticket,
+                                    "status": 1,
+                                    "base_info": &base_info,
+                                }))
+                                .send().await;
+                        }
+
+                        // 3. Call LLM
                         let history = user_histories.entry(from_user.to_string()).or_default();
                         history.push(serde_json::json!({"role": "user", "content": text}));
                         let start = if history.len() > max_context { history.len() - max_context } else { 0 };
                         let mut llm_msgs = vec![serde_json::json!({"role": "system", "content": &system_prompt})];
                         llm_msgs.extend(history[start..].to_vec());
 
-                        // Call LLM
                         let reply = match crate::llm::call_llm(&provider_config, &llm_msgs).await {
                             Ok(r) => r,
                             Err(e) => format!("AI 回复失败: {e}"),
                         };
 
-                        // Save assistant reply to history
+                        // 4. Cancel typing
+                        if !typing_ticket.is_empty() {
+                            let _ = client
+                                .post(format!("{}/ilink/bot/sendtyping", base_url))
+                                .headers(build_auth_headers(&token))
+                                .json(&serde_json::json!({
+                                    "ilink_user_id": from_user,
+                                    "typing_ticket": &typing_ticket,
+                                    "status": 2,
+                                    "base_info": &base_info,
+                                }))
+                                .send().await;
+                        }
+
+                        // 5. Save & send AI reply
                         history.push(serde_json::json!({"role": "assistant", "content": &reply}));
 
-                        // Send reply via WeChat
                         let reply_body = serde_json::json!({
                             "msg": {
                                 "from_user_id": "",
@@ -322,11 +383,10 @@ pub async fn start_wechat_listener(
                                 "message_type": 2,
                                 "message_state": 2,
                                 "item_list": [{"type": 1, "text_item": {"text": reply}}],
-                                "context_token": context_tokens.get(from_user).cloned().unwrap_or_default(),
+                                "context_token": &ctx_token,
                             },
-                            "base_info": base_info,
+                            "base_info": &base_info,
                         });
-
                         let _ = client
                             .post(format!("{}/ilink/bot/sendmessage", base_url))
                             .headers(build_auth_headers(&token))
