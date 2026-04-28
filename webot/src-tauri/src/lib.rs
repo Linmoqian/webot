@@ -13,6 +13,8 @@ pub fn run() {
         .manage(AppState {
             messages: std::sync::Mutex::new(Vec::new()),
             settings: std::sync::Mutex::new(settings),
+            wechat_poll_handle: std::sync::Mutex::new(None),
+            wechat_stop_tx: std::sync::Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             commands::start_chat,
@@ -20,6 +22,8 @@ pub fn run() {
             commands::fetch_wechat_qr,
             commands::poll_qr_status,
             commands::save_wechat_token,
+            commands::start_wechat_listener,
+            commands::stop_wechat_listener,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

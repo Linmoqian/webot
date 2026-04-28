@@ -32,6 +32,7 @@ function App() {
   const qrIdRef = useRef<string>("");
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [wechatConnected, setWechatConnected] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,6 +41,13 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const unlisten = listen<{ status: string }>("wechat-status", event => {
+      setWechatConnected(event.payload.status === "connected");
+    });
+    return () => { unlisten.then(fn => fn()); };
+  }, []);
 
   const toggleReasoning = (index: number) => {
     setMessages(prev => prev.map((msg, i) =>
@@ -66,7 +74,9 @@ function App() {
           stopQrPoll();
           const token = data.bot_token || "";
           if (token) {
-            invoke("save_wechat_token", { token, baseUrl: data.baseurl || null }).catch(() => {});
+            invoke("save_wechat_token", { token, baseUrl: data.baseurl || null })
+              .then(() => invoke("start_wechat_listener"))
+              .catch(() => {});
           }
           setTimeout(() => closeQrModal(), 800);
         } else if (status === "expired") {
@@ -222,6 +232,13 @@ function App() {
           </div>
           <button className="qr-header-btn" onClick={openQrModal} title="微信登录">
             <QrCode size={20} />
+          </button>
+          <button
+            className={`wechat-toggle-btn ${wechatConnected ? "connected" : ""}`}
+            onClick={() => invoke(wechatConnected ? "stop_wechat_listener" : "start_wechat_listener").catch(() => {})}
+            title={wechatConnected ? "断开微信" : "连接微信"}
+          >
+            <span className="wechat-dot" />
           </button>
         </header>
         

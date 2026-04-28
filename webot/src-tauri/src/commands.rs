@@ -3,10 +3,13 @@ use std::sync::Mutex;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tokio::sync::watch;
 
 pub struct AppState {
     pub messages: Mutex<Vec<Value>>,
     pub settings: Mutex<crate::config::Settings>,
+    pub wechat_poll_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
+    pub wechat_stop_tx: Mutex<Option<watch::Sender<bool>>>,
 }
 
 #[tauri::command]
@@ -141,5 +144,194 @@ pub fn save_wechat_token(
     }
     crate::config::save_settings(&settings)?;
     *state.settings.lock().unwrap() = settings;
+    Ok(())
+}
+
+fn build_auth_headers(token: &str) -> reqwest::header::HeaderMap {
+    let mut headers = build_wechat_headers();
+    if !token.is_empty() {
+        headers.insert(
+            "Authorization",
+            format!("Bearer {token}").parse().unwrap(),
+        );
+    }
+    headers
+}
+
+#[tauri::command]
+pub async fn start_wechat_listener(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let settings = state.settings.lock().unwrap().clone();
+    let token = settings.wechat.token.clone();
+    if token.is_empty() {
+        return Err("未登录微信，请先扫码登录".into());
+    }
+    let base_url = settings.wechat.base_url.clone();
+
+    // Stop existing listener if any
+    {
+        if let Some(tx) = state.wechat_stop_tx.lock().unwrap().take() {
+            let _ = tx.send(true);
+        }
+        if let Some(handle) = state.wechat_poll_handle.lock().unwrap().take() {
+            handle.abort();
+        }
+    }
+
+    let (stop_tx, stop_rx) = watch::channel(false);
+    *state.wechat_stop_tx.lock().unwrap() = Some(stop_tx);
+
+    let handle = tokio::spawn(async move {
+        let client = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .timeout(std::time::Duration::from_secs(45))
+            .build()
+            .unwrap();
+
+        let mut cursor = String::new();
+        let mut context_tokens: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let base_info = serde_json::json!({"channel_version": "2.1.1"});
+
+        let _ = app.emit("wechat-status", serde_json::json!({"status": "connected"}));
+
+        loop {
+            if stop_rx.has_changed().unwrap_or(false) && *stop_rx.borrow() {
+                break;
+            }
+
+            let body = serde_json::json!({
+                "get_updates_buf": cursor,
+                "base_info": base_info,
+            });
+
+            let resp = match client
+                .post(format!("{}/ilink/bot/getupdates", base_url))
+                .headers(build_auth_headers(&token))
+                .json(&body)
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    continue;
+                }
+            };
+
+            let data: Value = match resp.json().await {
+                Ok(d) => d,
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    continue;
+                }
+            };
+
+            // Check errors
+            let errcode = data.get("errcode").and_then(|v| v.as_i64()).unwrap_or(0);
+            if errcode != 0 {
+                let _ = app.emit("wechat-status", serde_json::json!({
+                    "status": "error",
+                    "message": format!("errcode={errcode}")
+                }));
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                continue;
+            }
+
+            // Update cursor
+            if let Some(buf) = data.get("get_updates_buf").and_then(|v| v.as_str()) {
+                if !buf.is_empty() {
+                    cursor = buf.to_string();
+                }
+            }
+
+            // Process messages
+            let msgs = data.get("msgs").and_then(|v| v.as_array());
+            if let Some(msgs) = msgs {
+                for msg in msgs {
+                    // Skip bot messages (type 2)
+                    if msg.get("message_type").and_then(|v| v.as_i64()) == Some(2) {
+                        continue;
+                    }
+
+                    let from_user = msg
+                        .get("from_user_id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    if from_user.is_empty() {
+                        continue;
+                    }
+
+                    // Cache context_token
+                    if let Some(ct) = msg.get("context_token").and_then(|v| v.as_str()) {
+                        if !ct.is_empty() {
+                            context_tokens.insert(from_user.to_string(), ct.to_string());
+                        }
+                    }
+
+                    // Extract text
+                    let mut text = String::new();
+                    if let Some(items) = msg.get("item_list").and_then(|v| v.as_array()) {
+                        for item in items {
+                            if item.get("type").and_then(|v| v.as_i64()) == Some(1) {
+                                if let Some(t) = item
+                                    .get("text_item")
+                                    .and_then(|ti| ti.get("text"))
+                                    .and_then(|v| v.as_str())
+                                {
+                                    text = t.to_string();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if !text.is_empty() {
+                        let _ = app.emit("wechat-message", serde_json::json!({
+                            "from": from_user,
+                            "text": text,
+                        }));
+
+                        // Auto-reply "收到"
+                        let reply_body = serde_json::json!({
+                            "msg": {
+                                "from_user_id": "",
+                                "to_user_id": from_user,
+                                "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
+                                "message_type": 2,
+                                "message_state": 2,
+                                "item_list": [{"type": 1, "text_item": {"text": "收到"}}],
+                                "context_token": context_tokens.get(from_user).cloned().unwrap_or_default(),
+                            },
+                            "base_info": base_info,
+                        });
+
+                        let _ = client
+                            .post(format!("{}/ilink/bot/sendmessage", base_url))
+                            .headers(build_auth_headers(&token))
+                            .json(&reply_body)
+                            .send()
+                            .await;
+                    }
+                }
+            }
+        }
+
+        let _ = app.emit("wechat-status", serde_json::json!({"status": "disconnected"}));
+    });
+
+    *state.wechat_poll_handle.lock().unwrap() = Some(handle);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn stop_wechat_listener(state: State<'_, AppState>) -> Result<(), String> {
+    if let Some(tx) = state.wechat_stop_tx.lock().unwrap().take() {
+        let _ = tx.send(true);
+    }
+    if let Some(handle) = state.wechat_poll_handle.lock().unwrap().take() {
+        handle.abort();
+    }
     Ok(())
 }
