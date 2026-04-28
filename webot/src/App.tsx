@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import "./App.css";
 
 interface Message {
@@ -31,8 +33,6 @@ function App() {
     ));
   };
 
-  const API_URL = "http://localhost:18180/chat";
-
   const sendChatMessage = async (userMessage: string) => {
     setMessages(prev => [
       ...prev,
@@ -40,106 +40,64 @@ function App() {
       { role: "agent" as const, content: "", reasoning_content: "", isThinking: false, isFinished: false, showReasoning: false }
     ]);
 
+    const cleanup = { current: () => {} };
+
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage }),
+      const unlistenText = await listen<{ content: string }>("chat-text", (event) => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = { ...last, content: last.content + (event.payload.content || "") };
+          return updated;
+        });
       });
 
-      if (!response.ok || !response.body) throw new Error("请求失败");
+      const unlistenDone = await listen("chat-done", () => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = { ...last, isFinished: true, isThinking: false };
+          return updated;
+        });
+        setIsLoading(false);
+        cleanup.current();
+      });
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const unlistenError = await listen<{ message: string }>("chat-error", (event) => {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content: "错误: " + (event.payload.message || "未知错误"),
+            isFinished: true,
+            isThinking: false,
+          };
+          return updated;
+        });
+        setIsLoading(false);
+        cleanup.current();
+      });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      cleanup.current = () => {
+        unlistenText();
+        unlistenDone();
+        unlistenError();
+      };
 
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split("\n\n");
-        buffer = parts.pop() || "";
-
-        for (const part of parts) {
-          if (!part.trim()) continue;
-          let eventType = "";
-          let eventData = "{}";
-
-          for (const line of part.split("\n")) {
-            if (line.startsWith("event: ")) eventType = line.slice(7);
-            else if (line.startsWith("data: ")) eventData = line.slice(6);
-          }
-
-          try {
-            const data = JSON.parse(eventData);
-            switch (eventType) {
-              case "text":
-                setMessages(prev => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  updated[updated.length - 1] = { ...last, content: last.content + (data.content || "") };
-                  return updated;
-                });
-                break;
-              case "thinking":
-                setMessages(prev => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  updated[updated.length - 1] = {
-                    ...last,
-                    reasoning_content: (last.reasoning_content || "") + (data.content || ""),
-                    isThinking: true,
-                    showReasoning: true,
-                  };
-                  return updated;
-                });
-                break;
-              case "done":
-                setMessages(prev => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  updated[updated.length - 1] = {
-                    ...last,
-                    isFinished: true,
-                    isThinking: false,
-                    showReasoning: false,
-                  };
-                  return updated;
-                });
-                setIsLoading(false);
-                break;
-              case "error":
-                setMessages(prev => {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = {
-                    ...updated[updated.length - 1],
-                    content: "错误: " + (data.message || "未知错误"),
-                    isFinished: true,
-                    isThinking: false,
-                  };
-                  return updated;
-                });
-                setIsLoading(false);
-                break;
-            }
-          } catch {
-            // JSON 解析失败，跳过
-          }
-        }
-      }
+      await invoke("start_chat", { message: userMessage });
     } catch {
       setMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: "连接失败，请检查后端服务是否启动 (http://localhost:18180)",
+          content: "连接失败，请检查 Tauri 后端",
           isFinished: true,
           isThinking: false,
         };
         return updated;
       });
       setIsLoading(false);
+      cleanup.current();
     }
   };
 
