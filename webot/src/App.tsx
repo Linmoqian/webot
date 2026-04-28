@@ -184,7 +184,12 @@ function App() {
                         
                         {msg.showReasoning && (
                           <div className="reasoning-content">
-                            {msg.reasoning_content}
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              rehypePlugins={[rehypeHighlight, rehypeKatex]}
+                            >
+                              {msg.reasoning_content || ""}
+                            </ReactMarkdown>
                           </div>
                         )}
                       </div>
