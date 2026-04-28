@@ -531,6 +531,17 @@ textarea::placeholder {
   to { transform: rotate(360deg); }
 }
 
+@keyframes breathe-dark {
+  0%, 100% {
+    box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(63, 185, 80, 0.7), 0 0 20px rgba(63, 185, 80, 0.3);
+    transform: scale(1.15);
+  }
+}
+
 /* QR code header button */
 .qr-header-btn {
   background: none;
@@ -890,42 +901,87 @@ textarea::placeholder {
   font-size: 14px;
 }
 
-/* Dark mode - sleek implementation */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #e5e5e5;
-    background-color: #1a1a1a;
-  }
-  
+/* Settings segmented control */
+.settings-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #999;
+  margin: 0 0 8px;
+}
+
+.settings-segmented {
+  display: flex;
+  gap: 0;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.settings-segmented button {
+  flex: 1;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #666;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.settings-segmented button.active {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #111;
+  font-weight: 600;
+}
+
+.settings-segmented button:not(.active):hover {
+  color: #333;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Dark mode - manual toggle via data-theme attribute */
+[data-theme="dark"] {
+  color: #e5e5e5;
+  background-color: #1a1a1a;
+
   .layout-container { background: #1a1a1a; }
-  .main-content { 
-    background: transparent; 
+  .main-content {
+    background: transparent;
     box-shadow: none;
   }
-  
+
   .app-header {
     background: #1a1a1a;
     border-color: #2a2a2a;
   }
-  
+
   .logo-box { background: white; color: black; }
   .badge { background: #2a2a2a; color: #aaa; }
-  
+
   .hero-icon-wrapper { background: #2a2a2a; color: #e5e5e5; }
-  
+
   .message-row.user {
     background: #1f1f1f;
     border-color: #262626;
   }
-  
+
   .message-avatar-box {
     background: #1a1a1a;
     border-color: #333;
     color: #e5e5e5;
   }
-  
+
   .message-row.user .message-avatar-box { background: white; color: black; }
-  
+
   .message-sender-name { color: #e5e5e5; }
   .message-row.user .message-sender-name { color: white; }
   .message-text { color: #d4d4d4; }
@@ -963,7 +1019,7 @@ textarea::placeholder {
   .message-text hr {
     border-color: #333;
   }
-  
+
   .reasoning-block {
     background: #1e1e1e;
     border-color: #333;
@@ -975,7 +1031,7 @@ textarea::placeholder {
   .reasoning-content code { background: #333; }
   .reasoning-content pre code { background: #161b22; border-color: #333; }
   .reasoning-content blockquote { border-left-color: #555; color: #999; }
-  
+
   .input-wrapper {
     background: #232323;
     border-color: #333;
@@ -983,7 +1039,7 @@ textarea::placeholder {
   .input-wrapper:focus-within { border-color: #555; }
   textarea { color: #e5e5e5; }
   .input-dock { background: linear-gradient(0deg, #1a1a1a 60%, rgba(26,26,26,0) 100%); }
-  
+
   .send-button { background: #333; color: #666; }
   .send-button.active { background: white; color: black; }
   .send-button.active:hover { background: #e5e5e5; }
@@ -993,6 +1049,16 @@ textarea::placeholder {
 
   .settings-header-btn { border-color: #333; color: #999; }
   .settings-header-btn:hover { background: #2a2a2a; color: #e5e5e5; }
+
+  .settings-section-title { color: #666; }
+  .settings-segmented { background: #2a2a2a; }
+  .settings-segmented button { color: #999; }
+  .settings-segmented button.active {
+    background: #3a3a3a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    color: #e5e5e5;
+  }
+  .settings-segmented button:not(.active):hover { color: #ccc; }
 
   .settings-label span { color: #aaa; }
   .settings-label input,
@@ -1013,17 +1079,6 @@ textarea::placeholder {
   .wechat-toggle-btn.connected .wechat-dot {
     background: #3fb950;
     animation: breathe-dark 2s ease-in-out infinite;
-  }
-
-  @keyframes breathe-dark {
-    0%, 100% {
-      box-shadow: 0 0 4px rgba(63, 185, 80, 0.4);
-      transform: scale(1);
-    }
-    50% {
-      box-shadow: 0 0 12px rgba(63, 185, 80, 0.7), 0 0 20px rgba(63, 185, 80, 0.3);
-      transform: scale(1.15);
-    }
   }
 
   .qr-modal { background: #232323; }

@@ -8,6 +8,7 @@ import remarkMath from "remark-math";
 import rehypeHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import { QRCodeSVG } from "qrcode.react";
+import { useI18n, type Theme } from "./i18n";
 import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
 import "./App.css";
@@ -21,7 +22,20 @@ interface Message {
   showReasoning?: boolean;
 }
 
+const THEME_KEY = "webot-theme";
+
+function applyTheme(theme: Theme) {
+  if (theme === "system") {
+    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  } else {
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+}
+
 function App() {
+  const { lang, setLang, t } = useI18n();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -40,6 +54,26 @@ function App() {
     base_url: "", model: "", api_key: "", system_prompt: "", max_context_messages: 20,
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const [theme, setThemeState] = useState<Theme>(
+    () => (localStorage.getItem(THEME_KEY) as Theme) || "system"
+  );
+
+  useEffect(() => {
+    applyTheme(theme);
+    localStorage.setItem(THEME_KEY, theme);
+
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = () => applyTheme("system");
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+  }, [theme]);
+
+  const setTheme = useCallback((t: Theme) => {
+    setThemeState(t);
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,7 +151,7 @@ function App() {
         const content = data.qrcode_img_content || data.qrcode || "";
         if (!content) {
           setQrStatus("error");
-          setQrError("未获取到二维码数据");
+          setQrError(t("qrNoData"));
           return;
         }
         qrIdRef.current = data.qrcode || "";
@@ -129,7 +163,7 @@ function App() {
         setQrStatus("error");
         setQrError(String(err));
       });
-  }, [pollQrStatus]);
+  }, [pollQrStatus, t]);
 
   const closeQrModal = useCallback(() => {
     stopQrPoll();
@@ -227,7 +261,7 @@ function App() {
           const updated = [...prev];
           updated[updated.length - 1] = {
             ...updated[updated.length - 1],
-            content: "错误: " + (event.payload.message || "未知错误"),
+            content: t("errorPrefix") + ": " + (event.payload.message || t("connectionError")),
             isFinished: true,
             isThinking: false,
           };
@@ -250,7 +284,7 @@ function App() {
         const updated = [...prev];
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: "连接失败，请检查 Tauri 后端",
+          content: t("connectionError"),
           isFinished: true,
           isThinking: false,
         };
@@ -269,6 +303,12 @@ function App() {
     sendChatMessage(userText);
   };
 
+  const themeOptions: { value: Theme; label: string }[] = [
+    { value: "light", label: t("themeLight") },
+    { value: "dark", label: t("themeDark") },
+    { value: "system", label: t("themeSystem") },
+  ];
+
   return (
     <div className="layout-container">
       <div className="main-content">
@@ -278,32 +318,32 @@ function App() {
             <h2>Nexus AI</h2>
             <span className="badge">Beta</span>
           </div>
-          <button className="qr-header-btn" onClick={openQrModal} title="微信登录">
+          <button className="qr-header-btn" onClick={openQrModal} title={t("tooltipWechatLogin")}>
             <QrCode size={20} />
           </button>
-          <button className="settings-header-btn" onClick={openSettingsModal} title="模型设置">
+          <button className="settings-header-btn" onClick={openSettingsModal} title={t("tooltipSettings")}>
             <Settings size={20} />
           </button>
           <button
             className={`wechat-toggle-btn ${wechatConnected ? "connected" : ""}`}
             onClick={() => setShowWechatLog(true)}
-            title={wechatConnected ? "微信消息日志" : "未连接微信"}
+            title={wechatConnected ? t("tooltipWechatLog") : t("tooltipWechatNotConnected")}
           >
             <span className="wechat-dot" />
           </button>
         </header>
-        
+
         <div className="chat-scroll-area">
           {messages.length === 0 && (
             <div className="hero-welcome">
               <div className="hero-icon-wrapper">
                 <Sparkles size={48} className="hero-icon" />
               </div>
-              <h1 className="hero-title">今天能帮您解答些什么？</h1>
-              <p className="hero-subtitle">Nexus AI 拥有深度思考能力，能够洞察复杂问题。</p>
+              <h1 className="hero-title">{t("heroTitle")}</h1>
+              <p className="hero-subtitle">{t("heroSubtitle")}</p>
             </div>
           )}
-          
+
           <div className="message-list">
             {messages.map((msg, index) => (
               <div key={index} className={`message-row ${msg.role}`}>
@@ -311,25 +351,25 @@ function App() {
                   <div className="message-avatar-box">
                     {msg.role === "user" ? <User size={18} /> : <Bot size={18} />}
                   </div>
-                  
+
                   <div className="message-content-box">
                     <div className="message-sender-name">
-                      {msg.role === "user" ? "You" : "Nexus"}
+                      {msg.role === "user" ? t("senderUser") : t("senderBot")}
                     </div>
 
                     {msg.role === "agent" && msg.reasoning_content && (
                       <div className={`reasoning-block ${msg.isThinking ? "is-thinking" : ""}`}>
-                        <button 
-                          className="reasoning-toggle" 
+                        <button
+                          className="reasoning-toggle"
                           onClick={() => toggleReasoning(index)}
                         >
                           {msg.showReasoning ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           <span className="reasoning-label">
-                            {msg.isThinking ? "Thinking Process" : "Thought Process"}
+                            {msg.isThinking ? t("thinkingActive") : t("thinkingProcess")}
                           </span>
                           {msg.isThinking && <Loader2 size={12} className="spinner" />}
                         </button>
-                        
+
                         {msg.showReasoning && (
                           <div className="reasoning-content">
                             <ReactMarkdown
@@ -342,7 +382,7 @@ function App() {
                         )}
                       </div>
                     )}
-                    
+
                     {msg.content && (
                       <div className="message-text">
                         <ReactMarkdown
@@ -353,7 +393,7 @@ function App() {
                         </ReactMarkdown>
                       </div>
                     )}
-                    
+
                     {msg.role === "agent" && !msg.content && msg.isThinking && (
                       <div className="typing-dot-indicator">
                         <span></span><span></span><span></span>
@@ -379,20 +419,20 @@ function App() {
                     handleSend();
                   }
                 }}
-                placeholder="Ask anything..."
+                placeholder={t("inputPlaceholder")}
                 disabled={isLoading}
                 rows={1}
               />
-              <button 
+              <button
                 className={`send-button ${input.trim() && !isLoading ? 'active' : ''}`}
-                onClick={handleSend} 
+                onClick={handleSend}
                 disabled={isLoading || !input.trim()}
               >
                 {isLoading ? <Loader2 size={18} className="spinner" /> : <Send size={18} />}
               </button>
             </div>
             <div className="input-footer-text">
-              Nexus AI can make mistakes. Consider verifying critical information.
+              {t("inputFooter")}
             </div>
           </div>
         </div>
@@ -404,40 +444,40 @@ function App() {
             <button className="qr-modal-close" onClick={closeQrModal}>
               <X size={18} />
             </button>
-            <h3 className="qr-modal-title">微信扫码登录</h3>
+            <h3 className="qr-modal-title">{t("qrTitle")}</h3>
             <div className="qr-modal-body">
               {qrStatus === "loading" && (
                 <div className="qr-loading">
                   <Loader2 size={32} className="spinner" />
-                  <p>获取二维码中...</p>
+                  <p>{t("qrLoading")}</p>
                 </div>
               )}
               {qrStatus === "waiting" && qrData && (
                 <div className="qr-code-wrapper">
                   <QRCodeSVG value={qrData} size={200} level="M" />
-                  <p className="qr-hint">请使用微信扫描二维码</p>
+                  <p className="qr-hint">{t("qrHint")}</p>
                 </div>
               )}
               {qrStatus === "scanned" && (
                 <div className="qr-status-info scanned">
-                  <p>已扫描，请在手机上确认登录</p>
+                  <p>{t("qrScanned")}</p>
                 </div>
               )}
               {qrStatus === "confirmed" && (
                 <div className="qr-status-info confirmed">
-                  <p>登录成功</p>
+                  <p>{t("qrConfirmed")}</p>
                 </div>
               )}
               {qrStatus === "expired" && (
                 <div className="qr-status-info expired">
-                  <p>二维码已过期</p>
-                  <button className="qr-refresh-btn" onClick={openQrModal}>刷新二维码</button>
+                  <p>{t("qrExpired")}</p>
+                  <button className="qr-refresh-btn" onClick={openQrModal}>{t("qrRefresh")}</button>
                 </div>
               )}
               {qrStatus === "error" && (
                 <div className="qr-status-info error">
-                  <p>{qrError || "获取二维码失败"}</p>
-                  <button className="qr-refresh-btn" onClick={openQrModal}>重试</button>
+                  <p>{qrError || t("qrError")}</p>
+                  <button className="qr-refresh-btn" onClick={openQrModal}>{t("qrRetry")}</button>
                 </div>
               )}
             </div>
@@ -451,10 +491,34 @@ function App() {
             <button className="qr-modal-close" onClick={() => setShowSettingsModal(false)}>
               <X size={18} />
             </button>
-            <h3 className="qr-modal-title">模型设置</h3>
+            <h3 className="qr-modal-title">{t("settingsTitle")}</h3>
             <div className="settings-form">
+              <div className="settings-section-title">{t("sectionAppearance")}</div>
+              <div className="settings-row">
+                <span className="settings-label">{t("labelTheme")}</span>
+                <div className="settings-segmented">
+                  {themeOptions.map(opt => (
+                    <button
+                      key={opt.value}
+                      className={theme === opt.value ? "active" : ""}
+                      onClick={() => setTheme(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="settings-row">
+                <span className="settings-label">{t("labelLanguage")}</span>
+                <div className="settings-segmented">
+                  <button className={lang === "zh" ? "active" : ""} onClick={() => setLang("zh")}>中文</button>
+                  <button className={lang === "en" ? "active" : ""} onClick={() => setLang("en")}>English</button>
+                </div>
+              </div>
+
+              <div className="settings-section-title" style={{ marginTop: 12 }}>{t("sectionModel")}</div>
               <label className="settings-label">
-                <span>Base URL</span>
+                <span>{t("labelBaseUrl")}</span>
                 <input
                   type="text"
                   value={settingsForm.base_url}
@@ -463,7 +527,7 @@ function App() {
                 />
               </label>
               <label className="settings-label">
-                <span>模型</span>
+                <span>{t("labelModel")}</span>
                 <input
                   type="text"
                   value={settingsForm.model}
@@ -472,7 +536,7 @@ function App() {
                 />
               </label>
               <label className="settings-label">
-                <span>API Key</span>
+                <span>{t("labelApiKey")}</span>
                 <input
                   type="password"
                   value={settingsForm.api_key}
@@ -481,7 +545,7 @@ function App() {
                 />
               </label>
               <label className="settings-label">
-                <span>系统提示词</span>
+                <span>{t("labelSystemPrompt")}</span>
                 <textarea
                   value={settingsForm.system_prompt}
                   onChange={e => setSettingsForm(prev => ({ ...prev, system_prompt: e.target.value }))}
@@ -490,7 +554,7 @@ function App() {
                 />
               </label>
               <label className="settings-label">
-                <span>上下文消息数</span>
+                <span>{t("labelContextMessages")}</span>
                 <input
                   type="number"
                   value={settingsForm.max_context_messages}
@@ -504,7 +568,7 @@ function App() {
                 onClick={saveSettings}
                 disabled={settingsSaving}
               >
-                {settingsSaving ? <Loader2 size={16} className="spinner" /> : "保存"}
+                {settingsSaving ? <Loader2 size={16} className="spinner" /> : t("btnSave")}
               </button>
             </div>
           </div>
@@ -517,12 +581,12 @@ function App() {
             <button className="qr-modal-close" onClick={() => setShowWechatLog(false)}>
               <X size={18} />
             </button>
-            <h3 className="qr-modal-title">微信消息日志</h3>
+            <h3 className="qr-modal-title">{t("wechatLogTitle")}</h3>
             <div className="wechat-log-list">
               {wechatMessages.length === 0 ? (
                 <div className="wechat-log-empty">
                   <MessageCircle size={32} />
-                  <p>{wechatConnected ? "暂无消息" : "未连接微信"}</p>
+                  <p>{wechatConnected ? t("noMessages") : t("wechatNotConnected")}</p>
                 </div>
               ) : (
                 wechatMessages.map((msg, i) => (
