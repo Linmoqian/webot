@@ -952,6 +952,132 @@ textarea::placeholder {
   gap: 6px;
 }
 
+/* Plugin Marketplace */
+.marketplace-modal {
+  max-width: 560px;
+  width: 90vw;
+}
+
+.marketplace-search {
+  width: 100%;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #111;
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+}
+
+.marketplace-search:focus {
+  border-color: #999;
+  background: white;
+}
+
+.marketplace-search::placeholder {
+  color: #aaa;
+}
+
+.marketplace-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.marketplace-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.marketplace-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.marketplace-card:hover {
+  border-color: #ddd;
+  background: #fafafa;
+}
+
+.marketplace-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #555;
+}
+
+.marketplace-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.marketplace-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 2px;
+}
+
+.marketplace-card-desc {
+  font-size: 12px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.marketplace-install-btn {
+  flex-shrink: 0;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: inherit;
+}
+
+.marketplace-install-btn:hover {
+  background: #333;
+}
+
+.marketplace-installed-badge {
+  flex-shrink: 0;
+  background: #f0f0f0;
+  color: #888;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.marketplace-installed-badge:hover {
+  background: #e8e8e8;
+  color: #666;
+}
+
 /* Dark mode - manual toggle via data-theme attribute */
 [data-theme="dark"] {
   color: #e5e5e5;
@@ -1105,5 +1231,32 @@ textarea::placeholder {
   .wechat-log-from { color: #58a6ff; }
   .wechat-log-text { color: #d4d4d4; }
   .wechat-log-empty { color: #666; }
+
+  .marketplace-search {
+    background: #1e1e1e;
+    border-color: #333;
+    color: #e5e5e5;
+  }
+  .marketplace-search:focus {
+    border-color: #555;
+    background: #232323;
+  }
+  .marketplace-card {
+    border-color: #2a2a2a;
+  }
+  .marketplace-card:hover {
+    border-color: #3a3a3a;
+    background: #1e1e1e;
+  }
+  .marketplace-card-icon {
+    background: #2a2a2a;
+    color: #bbb;
+  }
+  .marketplace-card-name { color: #e5e5e5; }
+  .marketplace-card-desc { color: #777; }
+  .marketplace-install-btn { background: white; color: black; }
+  .marketplace-install-btn:hover { background: #e5e5e5; }
+  .marketplace-installed-badge { background: #2a2a2a; color: #777; }
+  .marketplace-installed-badge:hover { background: #333; color: #aaa; }
 }
 
