@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -24,6 +24,21 @@ interface Message {
 
 const THEME_KEY = "webot-theme";
 
+const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "tiff", "ico"]);
+
+function preprocessMediaMarkers(text: string, mediaDir: string): string {
+  return text.replace(/\[media:\s*([^\]]+)\]/g, (_match, filename: string) => {
+    const trimmed = filename.trim();
+    const filePath = `${mediaDir}/${trimmed}`;
+    const url = convertFileSrc(filePath);
+    const ext = trimmed.split(".").pop()?.toLowerCase() || "";
+    if (IMAGE_EXTS.has(ext)) {
+      return `![${trimmed}](${url})`;
+    }
+    return `[${trimmed}](${url})`;
+  });
+}
+
 function applyTheme(theme: Theme) {
   if (theme === "system") {
     const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -46,6 +61,7 @@ function App() {
   const qrIdRef = useRef<string>("");
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mediaDirRef = useRef<string>("");
   const [wechatConnected, setWechatConnected] = useState(false);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
   const [showWechatLog, setShowWechatLog] = useState(false);
@@ -70,6 +86,14 @@ function App() {
       return () => mq.removeEventListener("change", handler);
     }
   }, [theme]);
+
+  useEffect(() => {
+    invoke<{ wechat: { media_dir: string | null } }>("get_settings")
+      .then((s) => {
+        mediaDirRef.current = s.wechat.media_dir || "";
+      })
+      .catch(() => {});
+  }, []);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
@@ -389,7 +413,9 @@ function App() {
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeHighlight, rehypeKatex]}
                         >
-                          {msg.content}
+                          {msg.role === "agent" && mediaDirRef.current
+                            ? preprocessMediaMarkers(msg.content, mediaDirRef.current)
+                            : msg.content}
                         </ReactMarkdown>
                       </div>
                     )}

@@ -12,6 +12,29 @@ pub struct AppState {
     pub wechat_stop_tx: Mutex<Option<watch::Sender<bool>>>,
 }
 
+fn build_system_prompt_with_media(base_prompt: &str, media_dir: &Option<String>) -> String {
+    if let Some(ref dir) = media_dir {
+        let mut files = String::new();
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if !files.is_empty() {
+                        files.push('\n');
+                    }
+                    files.push_str("- ");
+                    files.push_str(name);
+                }
+            }
+        }
+        if !files.is_empty() {
+            return format!(
+                "{base_prompt}\n\n你可以发送媒体文件给用户。在回复中使用 [media: 文件名] 标记来发送文件，可以多个。可用的媒体文件：\n{files}"
+            );
+        }
+    }
+    base_prompt.to_string()
+}
+
 fn parse_media_markers(reply: &str) -> (String, Vec<String>) {
     let mut media_files = Vec::new();
     let mut clean = String::new();
@@ -57,9 +80,13 @@ pub async fn start_chat(
         } else {
             0
         };
+        let system_content = build_system_prompt_with_media(
+        &settings.agent.system_prompt,
+        &settings.wechat.media_dir,
+    );
         let mut all = vec![serde_json::json!({
             "role": "system",
-            "content": &settings.agent.system_prompt
+            "content": system_content
         })];
         all.extend(msgs[start..].to_vec());
         all
@@ -198,30 +225,7 @@ pub async fn start_wechat_listener(
     let max_context = settings.agent.max_context_messages;
     let media_dir = settings.wechat.media_dir.clone();
 
-    // Build system prompt with media file list
-    let system_prompt = if let Some(ref dir) = media_dir {
-        let mut files = String::new();
-        if let Ok(entries) = std::fs::read_dir(dir) {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if !files.is_empty() {
-                        files.push('\n');
-                    }
-                    files.push_str("- ");
-                    files.push_str(name);
-                }
-            }
-        }
-        if files.is_empty() {
-            system_prompt
-        } else {
-            format!(
-                "{system_prompt}\n\n你可以发送媒体文件给用户。在回复中使用 [media: 文件名] 标记来发送文件，可以多个。可用的媒体文件：\n{files}"
-            )
-        }
-    } else {
-        system_prompt
-    };
+    let system_prompt = build_system_prompt_with_media(&system_prompt, &media_dir);
 
     // Stop existing listener if any
     {
