@@ -73,6 +73,8 @@ pub struct WechatConfig {
     pub base_url: String,
     #[serde(default)]
     pub token: String,
+    #[serde(default)]
+    pub media_dir: Option<String>,
 }
 
 fn default_wechat_base_url() -> String {
@@ -84,6 +86,7 @@ impl Default for WechatConfig {
         Self {
             base_url: default_wechat_base_url(),
             token: String::new(),
+            media_dir: None,
         }
     }
 }

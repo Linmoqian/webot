@@ -12,6 +12,30 @@ pub struct AppState {
     pub wechat_stop_tx: Mutex<Option<watch::Sender<bool>>>,
 }
 
+fn parse_media_markers(reply: &str) -> (String, Vec<String>) {
+    let mut media_files = Vec::new();
+    let mut clean = String::new();
+    let mut remaining = reply;
+
+    while let Some(start) = remaining.find("[media:") {
+        clean.push_str(&remaining[..start]);
+        let after = &remaining[start + 7..];
+        if let Some(end) = after.find(']') {
+            let filename = after[..end].trim().to_string();
+            if !filename.is_empty() {
+                media_files.push(filename);
+            }
+            remaining = &after[end + 1..];
+        } else {
+            clean.push_str("[media:");
+            clean.push_str(after);
+            remaining = "";
+        }
+    }
+    clean.push_str(remaining);
+    (clean.trim().to_string(), media_files)
+}
+
 #[tauri::command]
 pub async fn start_chat(
     app: AppHandle,
@@ -172,6 +196,32 @@ pub async fn start_wechat_listener(
     let provider_config = settings.provider.clone();
     let system_prompt = settings.agent.system_prompt.clone();
     let max_context = settings.agent.max_context_messages;
+    let media_dir = settings.wechat.media_dir.clone();
+
+    // Build system prompt with media file list
+    let system_prompt = if let Some(ref dir) = media_dir {
+        let mut files = String::new();
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if !files.is_empty() {
+                        files.push('\n');
+                    }
+                    files.push_str("- ");
+                    files.push_str(name);
+                }
+            }
+        }
+        if files.is_empty() {
+            system_prompt
+        } else {
+            format!(
+                "{system_prompt}\n\n你可以发送媒体文件给用户。在回复中使用 [media: 文件名] 标记来发送文件，可以多个。可用的媒体文件：\n{files}"
+            )
+        }
+    } else {
+        system_prompt
+    };
 
     // Stop existing listener if any
     {
@@ -372,41 +422,45 @@ pub async fn start_wechat_listener(
                                 .send().await;
                         }
 
-                        // 5. Save & send AI reply
+                        // 5. Parse [media: ...] markers and send reply + media
+                        let (clean_text, media_files) = parse_media_markers(&reply);
                         history.push(serde_json::json!({"role": "assistant", "content": &reply}));
 
-                        let reply_body = serde_json::json!({
-                            "msg": {
-                                "from_user_id": "",
-                                "to_user_id": from_user,
-                                "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
-                                "message_type": 2,
-                                "message_state": 2,
-                                "item_list": [{"type": 1, "text_item": {"text": reply}}],
-                                "context_token": &ctx_token,
-                            },
-                            "base_info": &base_info,
-                        });
-                        let _ = client
-                            .post(format!("{}/ilink/bot/sendmessage", base_url))
-                            .headers(build_auth_headers(&token))
-                            .json(&reply_body)
-                            .send()
-                            .await;
+                        if !clean_text.is_empty() {
+                            let reply_body = serde_json::json!({
+                                "msg": {
+                                    "from_user_id": "",
+                                    "to_user_id": from_user,
+                                    "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
+                                    "message_type": 2,
+                                    "message_state": 2,
+                                    "item_list": [{"type": 1, "text_item": {"text": clean_text}}],
+                                    "context_token": &ctx_token,
+                                },
+                                "base_info": &base_info,
+                            });
+                            let _ = client
+                                .post(format!("{}/ilink/bot/sendmessage", base_url))
+                                .headers(build_auth_headers(&token))
+                                .json(&reply_body)
+                                .send()
+                                .await;
+                        }
 
-                        // 6. Send image
-                        let image_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                            .join("icons/cloud-maple-icon-transparent.png");
-                        let _ = crate::media::send_media_file(
-                            &client,
-                            &base_url,
-                            &build_auth_headers(&token),
-                            from_user,
-                            &ctx_token,
-                            &image_path.to_string_lossy(),
-                            &base_info,
-                        )
-                        .await;
+                        for filename in media_files {
+                            if let Some(ref dir) = media_dir {
+                                let file_path = std::path::Path::new(dir).join(&filename);
+                                let _ = crate::media::send_media_file(
+                                    &client,
+                                    &base_url,
+                                    &build_auth_headers(&token),
+                                    from_user,
+                                    &ctx_token,
+                                    &file_path.to_string_lossy(),
+                                    &base_info,
+                                ).await;
+                            }
+                        }
                     }
                 }
             }
