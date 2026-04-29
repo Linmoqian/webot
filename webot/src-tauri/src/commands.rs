@@ -8,6 +8,12 @@ use tokio::sync::watch;
 
 const WECHAT_DEDUP_MAX: usize = 1000;
 const WECHAT_STATE_FILE: &str = "account.json";
+const WECHAT_SESSION_EXPIRED: i64 = -14;
+const WECHAT_RETRY_DELAY_SECS: u64 = 2;
+const WECHAT_BACKOFF_DELAY_SECS: u64 = 30;
+const WECHAT_SESSION_PAUSE_SECS: u64 = 60 * 60;
+const WECHAT_MAX_CONSECUTIVE_FAILURES: u32 = 3;
+const WECHAT_DEFAULT_POLL_TIMEOUT_SECS: u64 = 35;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct WechatRuntimeState {
@@ -150,6 +156,23 @@ fn remember_wechat_message(
     }
 
     true
+}
+
+async fn sleep_or_stop(stop_rx: &watch::Receiver<bool>, duration: std::time::Duration) -> bool {
+    tokio::select! {
+        _ = tokio::time::sleep(duration) => false,
+        _ = async {
+            let mut stop_rx = stop_rx.clone();
+            loop {
+                if *stop_rx.borrow() {
+                    break;
+                }
+                if stop_rx.changed().await.is_err() {
+                    break;
+                }
+            }
+        } => true,
+    }
 }
 
 #[tauri::command]
@@ -347,9 +370,9 @@ pub async fn start_wechat_listener(
     *state.wechat_stop_tx.lock().unwrap() = Some(stop_tx);
 
     let handle = tokio::spawn(async move {
+        let mut poll_timeout_secs = WECHAT_DEFAULT_POLL_TIMEOUT_SECS;
         let client = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
-            .timeout(std::time::Duration::from_secs(45))
             .build()
             .unwrap();
 
@@ -361,6 +384,7 @@ pub async fn start_wechat_listener(
         let mut user_histories: std::collections::HashMap<String, Vec<Value>> = std::collections::HashMap::new();
         let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut seen_order: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+        let mut consecutive_failures = 0_u32;
         let base_info = serde_json::json!({"channel_version": "2.1.1"});
 
         let _ = app.emit("wechat-status", serde_json::json!({"status": "connected"}));
@@ -378,34 +402,118 @@ pub async fn start_wechat_listener(
             let resp = match client
                 .post(format!("{}/ilink/bot/getupdates", base_url))
                 .headers(build_auth_headers(&token))
+                .timeout(std::time::Duration::from_secs(poll_timeout_secs + 10))
                 .json(&body)
                 .send()
                 .await
             {
-                Ok(r) => r,
-                Err(_) => {
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                Ok(r) => {
+                    if !r.status().is_success() {
+                        consecutive_failures += 1;
+                        let status = r.status();
+                        let body = r.text().await.unwrap_or_default();
+                        let _ = app.emit("wechat-status", serde_json::json!({
+                            "status": "error",
+                            "message": format!("HTTP {status}: {body}")
+                        }));
+                        let delay = if consecutive_failures >= WECHAT_MAX_CONSECUTIVE_FAILURES {
+                            consecutive_failures = 0;
+                            WECHAT_BACKOFF_DELAY_SECS
+                        } else {
+                            WECHAT_RETRY_DELAY_SECS
+                        };
+                        if sleep_or_stop(&stop_rx, std::time::Duration::from_secs(delay)).await {
+                            break;
+                        }
+                        continue;
+                    }
+                    r
+                }
+                Err(e) => {
+                    if e.is_timeout() {
+                        continue;
+                    }
+                    consecutive_failures += 1;
+                    let delay = if consecutive_failures >= WECHAT_MAX_CONSECUTIVE_FAILURES {
+                        consecutive_failures = 0;
+                        WECHAT_BACKOFF_DELAY_SECS
+                    } else {
+                        WECHAT_RETRY_DELAY_SECS
+                    };
+                    let _ = app.emit("wechat-status", serde_json::json!({
+                        "status": "error",
+                        "message": format!("轮询失败: {e}")
+                    }));
+                    if sleep_or_stop(&stop_rx, std::time::Duration::from_secs(delay)).await {
+                        break;
+                    }
                     continue;
                 }
             };
 
             let data: Value = match resp.json().await {
-                Ok(d) => d,
-                Err(_) => {
-                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                Ok(d) => {
+                    consecutive_failures = 0;
+                    d
+                }
+                Err(e) => {
+                    consecutive_failures += 1;
+                    let delay = if consecutive_failures >= WECHAT_MAX_CONSECUTIVE_FAILURES {
+                        consecutive_failures = 0;
+                        WECHAT_BACKOFF_DELAY_SECS
+                    } else {
+                        WECHAT_RETRY_DELAY_SECS
+                    };
+                    let _ = app.emit("wechat-status", serde_json::json!({
+                        "status": "error",
+                        "message": format!("解析轮询响应失败: {e}")
+                    }));
+                    if sleep_or_stop(&stop_rx, std::time::Duration::from_secs(delay)).await {
+                        break;
+                    }
                     continue;
                 }
             };
 
             // Check errors
             let errcode = data.get("errcode").and_then(|v| v.as_i64()).unwrap_or(0);
-            if errcode != 0 {
+            let ret = data.get("ret").and_then(|v| v.as_i64()).unwrap_or(0);
+            if errcode != 0 || ret != 0 {
+                if errcode == WECHAT_SESSION_EXPIRED || ret == WECHAT_SESSION_EXPIRED {
+                    let _ = app.emit("wechat-status", serde_json::json!({
+                        "status": "error",
+                        "message": "微信会话已过期，已暂停轮询，请重新扫码登录"
+                    }));
+                    if sleep_or_stop(
+                        &stop_rx,
+                        std::time::Duration::from_secs(WECHAT_SESSION_PAUSE_SECS),
+                    ).await {
+                        break;
+                    }
+                    continue;
+                }
+
+                consecutive_failures += 1;
                 let _ = app.emit("wechat-status", serde_json::json!({
                     "status": "error",
-                    "message": format!("errcode={errcode}")
+                    "message": format!("errcode={errcode}, ret={ret}")
                 }));
-                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                let delay = if consecutive_failures >= WECHAT_MAX_CONSECUTIVE_FAILURES {
+                    consecutive_failures = 0;
+                    WECHAT_BACKOFF_DELAY_SECS
+                } else {
+                    WECHAT_RETRY_DELAY_SECS
+                };
+                if sleep_or_stop(&stop_rx, std::time::Duration::from_secs(delay)).await {
+                    break;
+                }
                 continue;
+            }
+
+            if let Some(timeout_ms) = data.get("longpolling_timeout_ms").and_then(|v| v.as_u64()) {
+                if timeout_ms > 0 {
+                    poll_timeout_secs = std::cmp::max(timeout_ms / 1000, 5);
+                }
             }
 
             // Update cursor
