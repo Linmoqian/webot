@@ -1,11 +1,25 @@
 use std::sync::Mutex;
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::watch;
 
 const WECHAT_DEDUP_MAX: usize = 1000;
+const WECHAT_STATE_FILE: &str = "account.json";
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct WechatRuntimeState {
+    #[serde(default)]
+    token: String,
+    #[serde(default)]
+    base_url: String,
+    #[serde(default)]
+    get_updates_buf: String,
+    #[serde(default)]
+    context_tokens: std::collections::HashMap<String, String>,
+}
 
 pub struct AppState {
     pub messages: Mutex<Vec<Value>>,
@@ -59,6 +73,33 @@ fn parse_media_markers(reply: &str) -> (String, Vec<String>) {
     }
     clean.push_str(remaining);
     (clean.trim().to_string(), media_files)
+}
+
+fn wechat_state_dir() -> std::path::PathBuf {
+    let base = crate::config::config_path()
+        .and_then(|p| p.parent().map(std::path::Path::to_path_buf))
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+    base.join("config").join("wechat_state")
+}
+
+fn wechat_state_path() -> std::path::PathBuf {
+    wechat_state_dir().join(WECHAT_STATE_FILE)
+}
+
+fn load_wechat_runtime_state() -> WechatRuntimeState {
+    let path = wechat_state_path();
+    let Ok(content) = std::fs::read_to_string(path) else {
+        return WechatRuntimeState::default();
+    };
+    serde_json::from_str(&content).unwrap_or_default()
+}
+
+fn save_wechat_runtime_state(state: &WechatRuntimeState) -> Result<(), String> {
+    let dir = wechat_state_dir();
+    std::fs::create_dir_all(&dir).map_err(|e| format!("创建微信状态目录失败: {e}"))?;
+    let content = serde_json::to_string_pretty(state).map_err(|e| e.to_string())?;
+    std::fs::write(dir.join(WECHAT_STATE_FILE), content)
+        .map_err(|e| format!("保存微信状态失败: {e}"))
 }
 
 fn wechat_message_id(msg: &Value) -> Option<String> {
@@ -246,6 +287,10 @@ pub fn save_wechat_token(
         settings.wechat.base_url = url;
     }
     crate::config::save_settings(&settings)?;
+    let mut runtime_state = load_wechat_runtime_state();
+    runtime_state.token = settings.wechat.token.clone();
+    runtime_state.base_url = settings.wechat.base_url.clone();
+    save_wechat_runtime_state(&runtime_state)?;
     *state.settings.lock().unwrap() = settings;
     Ok(())
 }
@@ -267,11 +312,20 @@ pub async fn start_wechat_listener(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let settings = state.settings.lock().unwrap().clone();
-    let token = settings.wechat.token.clone();
+    let runtime_state = load_wechat_runtime_state();
+    let token = if settings.wechat.token.is_empty() {
+        runtime_state.token.clone()
+    } else {
+        settings.wechat.token.clone()
+    };
     if token.is_empty() {
         return Err("未登录微信，请先扫码登录".into());
     }
-    let base_url = settings.wechat.base_url.clone();
+    let base_url = if settings.wechat.base_url.is_empty() && !runtime_state.base_url.is_empty() {
+        runtime_state.base_url.clone()
+    } else {
+        settings.wechat.base_url.clone()
+    };
     let provider_config = settings.provider.clone();
     let system_prompt = settings.agent.system_prompt.clone();
     let max_context = settings.agent.max_context_messages;
@@ -299,8 +353,11 @@ pub async fn start_wechat_listener(
             .build()
             .unwrap();
 
-        let mut cursor = String::new();
-        let mut context_tokens: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut runtime_state = runtime_state;
+        runtime_state.token = token.clone();
+        runtime_state.base_url = base_url.clone();
+        let mut cursor = runtime_state.get_updates_buf.clone();
+        let mut context_tokens = runtime_state.context_tokens.clone();
         let mut user_histories: std::collections::HashMap<String, Vec<Value>> = std::collections::HashMap::new();
         let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
         let mut seen_order: std::collections::VecDeque<String> = std::collections::VecDeque::new();
@@ -355,6 +412,8 @@ pub async fn start_wechat_listener(
             if let Some(buf) = data.get("get_updates_buf").and_then(|v| v.as_str()) {
                 if !buf.is_empty() {
                     cursor = buf.to_string();
+                    runtime_state.get_updates_buf = cursor.clone();
+                    let _ = save_wechat_runtime_state(&runtime_state);
                 }
             }
 
@@ -385,6 +444,8 @@ pub async fn start_wechat_listener(
                     if let Some(ct) = msg.get("context_token").and_then(|v| v.as_str()) {
                         if !ct.is_empty() {
                             context_tokens.insert(from_user.to_string(), ct.to_string());
+                            runtime_state.context_tokens = context_tokens.clone();
+                            let _ = save_wechat_runtime_state(&runtime_state);
                         }
                     }
 
