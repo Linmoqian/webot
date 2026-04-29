@@ -393,6 +393,20 @@ pub async fn start_wechat_listener(
                             .json(&reply_body)
                             .send()
                             .await;
+
+                        // 6. Send image
+                        let image_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                            .join("icons/cloud-maple-icon-transparent.png");
+                        let _ = crate::media::send_media_file(
+                            &client,
+                            &base_url,
+                            &build_auth_headers(&token),
+                            from_user,
+                            &ctx_token,
+                            &image_path.to_string_lossy(),
+                            &base_info,
+                        )
+                        .await;
                     }
                 }
             }
