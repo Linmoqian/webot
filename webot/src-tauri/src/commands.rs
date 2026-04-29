@@ -14,6 +14,7 @@ const WECHAT_BACKOFF_DELAY_SECS: u64 = 30;
 const WECHAT_SESSION_PAUSE_SECS: u64 = 60 * 60;
 const WECHAT_MAX_CONSECUTIVE_FAILURES: u32 = 3;
 const WECHAT_DEFAULT_POLL_TIMEOUT_SECS: u64 = 35;
+const WECHAT_MAX_MESSAGE_CHARS: usize = 4000;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct WechatRuntimeState {
@@ -79,6 +80,37 @@ fn parse_media_markers(reply: &str) -> (String, Vec<String>) {
     }
     clean.push_str(remaining);
     (clean.trim().to_string(), media_files)
+}
+
+fn split_wechat_message(text: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut remaining = text.trim();
+
+    while remaining.chars().count() > WECHAT_MAX_MESSAGE_CHARS {
+        let mut split_byte = remaining
+            .char_indices()
+            .nth(WECHAT_MAX_MESSAGE_CHARS)
+            .map(|(idx, _)| idx)
+            .unwrap_or(remaining.len());
+
+        if let Some(newline_idx) = remaining[..split_byte].rfind('\n') {
+            if newline_idx > 0 {
+                split_byte = newline_idx;
+            }
+        }
+
+        let chunk = remaining[..split_byte].trim();
+        if !chunk.is_empty() {
+            chunks.push(chunk.to_string());
+        }
+        remaining = remaining[split_byte..].trim_start();
+    }
+
+    if !remaining.is_empty() {
+        chunks.push(remaining.to_string());
+    }
+
+    chunks
 }
 
 fn wechat_state_dir() -> std::path::PathBuf {
@@ -659,7 +691,7 @@ pub async fn start_wechat_listener(
                         let (clean_text, media_files) = parse_media_markers(&reply);
                         history.push(serde_json::json!({"role": "assistant", "content": &reply}));
 
-                        if !clean_text.is_empty() {
+                        for text_chunk in split_wechat_message(&clean_text) {
                             let reply_body = serde_json::json!({
                                 "msg": {
                                     "from_user_id": "",
@@ -667,7 +699,7 @@ pub async fn start_wechat_listener(
                                     "client_id": format!("webot-{}", &uuid::Uuid::new_v4().to_string()[..12]),
                                     "message_type": 2,
                                     "message_state": 2,
-                                    "item_list": [{"type": 1, "text_item": {"text": clean_text}}],
+                                    "item_list": [{"type": 1, "text_item": {"text": text_chunk}}],
                                     "context_token": &ctx_token,
                                 },
                                 "base_info": &base_info,
