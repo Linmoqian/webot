@@ -1,18 +1,22 @@
-# 目标
+# Webot
 
-建立一个超轻量化的agent框架
+超轻量化 agent 桌面应用。Tauri 2 + React + Rust，直接调用 OpenAI 兼容 LLM API，支持 SSE 流式对话。
 
-# 设计原则
+同时集成微信通道（ilinkai API），支持扫码登录、自动回复、媒体文件收发。
 
-简洁小巧
-
-# agent loop
-
-调用LLM、解析工具、执行、回传
-
-# 启动
+## 快速开始
 
 ```bash
-python -m cli                # 终端 REPL
-python wechat_gateway.py     # 微信网关（首次需扫码登录）
+cd webot
+npm install
+npm run tauri dev
 ```
+
+首次运行前复制 `config.json` 并填入你的 LLM API 配置。
+
+## 技术栈
+
+- **前端**: React 18 + TypeScript + Vite
+- **后端**: Rust (Tauri 2)
+- **LLM**: OpenAI 兼容 API（流式/非流式）
+- **微信**: ilinkai API 长轮询
