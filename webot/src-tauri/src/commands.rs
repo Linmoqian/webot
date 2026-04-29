@@ -5,6 +5,8 @@ use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::watch;
 
+const WECHAT_DEDUP_MAX: usize = 1000;
+
 pub struct AppState {
     pub messages: Mutex<Vec<Value>>,
     pub settings: Mutex<crate::config::Settings>,
@@ -57,6 +59,56 @@ fn parse_media_markers(reply: &str) -> (String, Vec<String>) {
     }
     clean.push_str(remaining);
     (clean.trim().to_string(), media_files)
+}
+
+fn wechat_message_id(msg: &Value) -> Option<String> {
+    if let Some(id) = msg.get("msg_id").and_then(|v| v.as_str()) {
+        if !id.is_empty() {
+            return Some(id.to_string());
+        }
+    }
+
+    let from_user = msg.get("from_user_id").and_then(|v| v.as_str()).unwrap_or("");
+    if from_user.is_empty() {
+        return None;
+    }
+
+    let create_time = msg
+        .get("create_time_ms")
+        .or_else(|| msg.get("create_time"))
+        .map(|v| {
+            v.as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| v.to_string())
+        })
+        .unwrap_or_default();
+
+    if create_time.is_empty() {
+        None
+    } else {
+        Some(format!("{from_user}:{create_time}"))
+    }
+}
+
+fn remember_wechat_message(
+    seen_ids: &mut std::collections::HashSet<String>,
+    seen_order: &mut std::collections::VecDeque<String>,
+    msg_id: String,
+) -> bool {
+    if seen_ids.contains(&msg_id) {
+        return false;
+    }
+
+    seen_ids.insert(msg_id.clone());
+    seen_order.push_back(msg_id);
+
+    while seen_order.len() > WECHAT_DEDUP_MAX {
+        if let Some(old_id) = seen_order.pop_front() {
+            seen_ids.remove(&old_id);
+        }
+    }
+
+    true
 }
 
 #[tauri::command]
@@ -250,6 +302,8 @@ pub async fn start_wechat_listener(
         let mut cursor = String::new();
         let mut context_tokens: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         let mut user_histories: std::collections::HashMap<String, Vec<Value>> = std::collections::HashMap::new();
+        let mut seen_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut seen_order: std::collections::VecDeque<String> = std::collections::VecDeque::new();
         let base_info = serde_json::json!({"channel_version": "2.1.1"});
 
         let _ = app.emit("wechat-status", serde_json::json!({"status": "connected"}));
@@ -311,6 +365,12 @@ pub async fn start_wechat_listener(
                     // Skip bot messages (type 2)
                     if msg.get("message_type").and_then(|v| v.as_i64()) == Some(2) {
                         continue;
+                    }
+
+                    if let Some(msg_id) = wechat_message_id(msg) {
+                        if !remember_wechat_message(&mut seen_ids, &mut seen_order, msg_id) {
+                            continue;
+                        }
                     }
 
                     let from_user = msg
