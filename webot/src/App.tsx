@@ -26,6 +26,64 @@ const THEME_KEY = "webot-theme";
 
 const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "tiff", "ico"]);
 
+function getImageExt(value: string): string {
+  const withoutQuery = value.split(/[?#]/)[0];
+  return withoutQuery.split(".").pop()?.toLowerCase() || "";
+}
+
+function isImagePath(value: string): boolean {
+  return IMAGE_EXTS.has(getImageExt(value));
+}
+
+function isPassThroughUrl(value: string): boolean {
+  return /^(https?:|asset:|data:|blob:)/i.test(value);
+}
+
+function isLocalPath(value: string): boolean {
+  return /^(file:|[a-zA-Z]:[\\/]|\\\\|\/)/.test(value);
+}
+
+function fileUrlToPath(value: string): string {
+  try {
+    const url = new URL(value);
+    const pathname = decodeURIComponent(url.pathname);
+    if (/^\/[a-zA-Z]:/.test(pathname)) {
+      return pathname.slice(1);
+    }
+    return pathname;
+  } catch {
+    return value.replace(/^file:\/\//i, "");
+  }
+}
+
+function resolveImageSrc(src: string | undefined, mediaDir = ""): string | undefined {
+  if (!src) return src;
+
+  const trimmed = src.trim();
+  if (isPassThroughUrl(trimmed)) return trimmed;
+
+  if (/^file:/i.test(trimmed)) {
+    return convertFileSrc(fileUrlToPath(trimmed));
+  }
+
+  if (isLocalPath(trimmed)) {
+    return convertFileSrc(trimmed);
+  }
+
+  if (mediaDir && isImagePath(trimmed)) {
+    return convertFileSrc(`${mediaDir}/${trimmed}`);
+  }
+
+  return trimmed;
+}
+
+function transformMarkdownUrl(url: string, mediaDir = ""): string {
+  if (isImagePath(url) || /^file:/i.test(url) || isLocalPath(url)) {
+    return resolveImageSrc(url, mediaDir) || url;
+  }
+  return url;
+}
+
 function preprocessMediaMarkers(text: string, mediaDir: string): string {
   return text.replace(/\[media:\s*([^\]]+)\]/g, (_match, filename: string) => {
     const trimmed = filename.trim();
@@ -37,6 +95,56 @@ function preprocessMediaMarkers(text: string, mediaDir: string): string {
     }
     return `[${trimmed}](${url})`;
   });
+}
+
+function preprocessLocalImageLines(text: string, mediaDir = ""): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (
+        trimmed &&
+        !trimmed.startsWith("!") &&
+        isImagePath(trimmed) &&
+        (isLocalPath(trimmed) || (mediaDir && !/^[a-z]+:/i.test(trimmed)))
+      ) {
+        const url = resolveImageSrc(trimmed, mediaDir) || trimmed;
+        return `${line.slice(0, line.indexOf(trimmed))}![${trimmed}](${url})`;
+      }
+      return line;
+    })
+    .join("\n");
+}
+
+function renderMarkdown(content: string, mediaDir = "") {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeHighlight, rehypeKatex]}
+      urlTransform={(url) => transformMarkdownUrl(url, mediaDir)}
+      components={{
+        img: ({ src, alt, ...props }) => (
+          <img
+            {...props}
+            src={resolveImageSrc(src, mediaDir)}
+            alt={alt || ""}
+            loading="lazy"
+          />
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+function renderMessageContent(msg: Message, mediaDir: string) {
+  const contentWithMedia = msg.role === "agent" && mediaDir
+    ? preprocessMediaMarkers(msg.content, mediaDir)
+    : msg.content;
+  const content = preprocessLocalImageLines(contentWithMedia, mediaDir);
+
+  return renderMarkdown(content, mediaDir);
 }
 
 function applyTheme(theme: Theme) {
@@ -396,12 +504,7 @@ function App() {
 
                         {msg.showReasoning && (
                           <div className="reasoning-content">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm, remarkMath]}
-                              rehypePlugins={[rehypeHighlight, rehypeKatex]}
-                            >
-                              {msg.reasoning_content || ""}
-                            </ReactMarkdown>
+                            {renderMarkdown(msg.reasoning_content || "", mediaDirRef.current)}
                           </div>
                         )}
                       </div>
@@ -409,14 +512,7 @@ function App() {
 
                     {msg.content && (
                       <div className="message-text">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm, remarkMath]}
-                          rehypePlugins={[rehypeHighlight, rehypeKatex]}
-                        >
-                          {msg.role === "agent" && mediaDirRef.current
-                            ? preprocessMediaMarkers(msg.content, mediaDirRef.current)
-                            : msg.content}
-                        </ReactMarkdown>
+                        {renderMessageContent(msg, mediaDirRef.current)}
                       </div>
                     )}
 
