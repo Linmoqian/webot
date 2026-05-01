@@ -655,13 +655,16 @@ function App() {
             <h2>Nexus AI</h2>
             <span className="badge">Beta</span>
           </div>
-          <button className="qr-header-btn" onClick={openQrModal} title={t("tooltipWechatLogin")}>
+          <button className="qr-header-btn" onClick={openQrModal} title={t("tooltipWechatLogin")}
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "wechat-qr", name: { zh: "微信登录", en: "WeChat Login" }, description: { zh: t("tooltipWechatLogin"), en: t("tooltipWechatLogin") }, version: "-", author: "Webot Team", icon: "qr-code", type: "builtin", slots: undefined, lab: true } }); }}>
             <QrCode size={20} />
           </button>
-          <button className="settings-header-btn" onClick={openMarketplace} title={t("marketplaceTitle")}>
+          <button className="settings-header-btn" onClick={openMarketplace} title={t("marketplaceTitle")}
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "marketplace", name: { zh: "插件市场", en: "Plugin Marketplace" }, description: { zh: t("marketplaceTitle"), en: t("marketplaceTitle") }, version: "-", author: "Webot Team", icon: "store", type: "builtin", slots: undefined, lab: true } }); }}>
             <Store size={20} />
           </button>
-          <button className={`settings-header-btn ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(!sidebarOpen)} title={t("sidebarTitle")}>
+          <button className={`settings-header-btn ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(!sidebarOpen)} title={t("sidebarTitle")}
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "sidebar", name: { zh: "插件面板", en: "Plugin Panel" }, description: { zh: t("sidebarTitle"), en: t("sidebarTitle") }, version: "-", author: "Webot Team", icon: "layout-dashboard", type: "builtin", slots: undefined, lab: true } }); }}>
             <LayoutDashboard size={20} />
           </button>
           {installedPlugins
@@ -1204,27 +1207,32 @@ function App() {
         </div>
       )}
 
-      {contextMenu && (
-        <div className="context-menu-overlay" onClick={() => setContextMenu(null)}>
-          <div
-            className="context-menu"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={e => e.stopPropagation()}
-          >
-            <button className="context-menu-item" onClick={() => { setShowPluginInfo(contextMenu.plugin); setContextMenu(null); }}>
-              {t("contextPluginInfo")}
-            </button>
-            <button className="context-menu-item danger" onClick={async () => {
-              const id = contextMenu.plugin.id;
-              setContextMenu(null);
-              await handleUninstall(id);
-              if (activePage === id) setActivePage(null);
-            }}>
-              {t("contextUninstall")}
-            </button>
+      {contextMenu && (() => {
+        const isInstalledPlugin = installedPlugins.some(p => p.id === contextMenu.plugin.id);
+        return (
+          <div className="context-menu-overlay" onClick={() => setContextMenu(null)}>
+            <div
+              className="context-menu"
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button className="context-menu-item" onClick={() => { setShowPluginInfo(contextMenu.plugin); setContextMenu(null); }}>
+                {t("contextPluginInfo")}
+              </button>
+              {isInstalledPlugin && (
+                <button className="context-menu-item danger" onClick={async () => {
+                  const id = contextMenu.plugin.id;
+                  setContextMenu(null);
+                  await handleUninstall(id);
+                  if (activePage === id) setActivePage(null);
+                }}>
+                  {t("contextUninstall")}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showPluginInfo && (
         <div className="qr-modal-overlay" onClick={() => setShowPluginInfo(null)}>
