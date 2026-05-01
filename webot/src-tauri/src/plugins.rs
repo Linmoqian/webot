@@ -100,8 +100,16 @@ pub fn remove_plugin(id: &str) -> Result<(), String> {
 }
 
 fn local_marketplace_path() -> Option<std::path::PathBuf> {
-    crate::config::config_path()
-        .and_then(|p| p.parent().map(|dir| dir.join("marketplace").join("index.json")))
+    let candidates: Vec<std::path::PathBuf> = if let Some(cfg) = crate::config::config_path() {
+        let parent = cfg.parent()?;
+        vec![
+            parent.join("marketplace").join("index.json"),
+            parent.join("..").join("marketplace").join("index.json"),
+        ]
+    } else {
+        vec![]
+    };
+    candidates.into_iter().find(|p| p.exists())
 }
 
 fn load_local_marketplace() -> Option<MarketplaceIndex> {
