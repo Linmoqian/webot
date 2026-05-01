@@ -1,5 +1,7 @@
 use serde_json::{json, Value};
 
+use crate::plugins::PluginManifest;
+
 fn weather_def() -> Value {
     json!({
         "type": "function",
@@ -20,14 +22,27 @@ fn weather_def() -> Value {
     })
 }
 
-pub fn get_tool_definitions(ids: &[String]) -> Vec<Value> {
+fn builtin_tool_def(id: &str) -> Option<Value> {
+    match id {
+        "weather" => Some(weather_def()),
+        _ => None,
+    }
+}
+
+fn is_builtin(id: &str) -> bool {
+    matches!(id, "weather")
+}
+
+pub fn get_tool_definitions(ids: &[String], installed: &[PluginManifest]) -> Vec<Value> {
     let mut defs = Vec::new();
     for id in ids {
-        let def = match id.as_str() {
-            "weather" => weather_def(),
-            _ => continue,
-        };
-        defs.push(def);
+        if let Some(def) = builtin_tool_def(id) {
+            defs.push(def);
+            continue;
+        }
+        if let Some(plugin) = installed.iter().find(|p| p.id == *id) {
+            defs.push(plugin.tool.clone());
+        }
     }
     defs
 }
@@ -37,6 +52,26 @@ pub fn execute_tool(name: &str, args: Value) -> String {
         "weather" => execute_weather(args),
         _ => format!("未知工具: {name}"),
     }
+}
+
+pub async fn execute_tool_async(
+    name: &str,
+    args: Value,
+    installed: &[PluginManifest],
+) -> String {
+    if is_builtin(name) {
+        return execute_tool(name, args);
+    }
+    if let Some(plugin) = installed.iter().find(|p| {
+        p.tool["function"]["name"].as_str() == Some(name) || p.id == name
+    }) {
+        if let Some(ref endpoint) = plugin.endpoint {
+            return crate::plugins::execute_http_tool(endpoint, args)
+                .await
+                .unwrap_or_else(|e| format!("工具调用失败: {e}"));
+        }
+    }
+    format!("未知工具: {name}")
 }
 
 fn execute_weather(args: Value) -> String {

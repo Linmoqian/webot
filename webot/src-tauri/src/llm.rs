@@ -117,6 +117,7 @@ pub async fn chat_with_tools(
     config: &ProviderConfig,
     messages: &[Value],
     tools: &[Value],
+    installed_plugins: &[crate::plugins::PluginManifest],
     app: &AppHandle,
 ) -> Result<String, String> {
     let client = Client::builder()
@@ -173,7 +174,7 @@ pub async fn chat_with_tools(
                     serde_json::json!({ "name": name, "arguments": args }),
                 );
 
-                let result = crate::tools::execute_tool(name, args);
+                let result = crate::tools::execute_tool_async(name, args, installed_plugins).await;
 
                 all_messages.push(serde_json::json!({
                     "role": "tool",
