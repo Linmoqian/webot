@@ -76,6 +76,12 @@ const translations: Record<Lang, Record<string, string>> = {
     roundtableAddRole: "添加角色，回车确认",
     roundtableStart: "开始讨论",
     roundtableEmpty: "输入主题，邀请专家开始讨论",
+    contextUninstall: "卸载",
+    contextPluginInfo: "插件信息",
+    infoId: "ID",
+    infoVersion: "版本",
+    infoAuthor: "作者",
+    infoType: "类型",
   },
   en: {
     heroTitle: "What can I help you with today?",
@@ -149,6 +155,12 @@ const translations: Record<Lang, Record<string, string>> = {
     roundtableAddRole: "Add role, press Enter",
     roundtableStart: "Start Discussion",
     roundtableEmpty: "Enter a topic and invite experts to discuss",
+    contextUninstall: "Uninstall",
+    contextPluginInfo: "Plugin Info",
+    infoId: "ID",
+    infoVersion: "Version",
+    infoAuthor: "Author",
+    infoType: "Type",
   },
 };
 

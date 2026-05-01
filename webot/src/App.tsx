@@ -267,6 +267,8 @@ function App() {
   const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string }[]>([]);
   const [roundtableRunning, setRoundtableRunning] = useState(false);
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
+  const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
   const [showWechatLog, setShowWechatLog] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -671,6 +673,7 @@ function App() {
                   key={plugin.id}
                   className={`settings-header-btn ${activePage === plugin.id ? "active" : ""}`}
                   onClick={() => setActivePage(activePage === plugin.id ? null : plugin.id)}
+                  onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin }); }}
                   title={plugin.slots!.page!.label[lang]}
                 >
                   <PageIcon size={20} />
@@ -1196,6 +1199,46 @@ function App() {
                   {renderMarkdown(roundtableResult)}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {contextMenu && (
+        <div className="context-menu-overlay" onClick={() => setContextMenu(null)}>
+          <div
+            className="context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button className="context-menu-item" onClick={() => { setShowPluginInfo(contextMenu.plugin); setContextMenu(null); }}>
+              {t("contextPluginInfo")}
+            </button>
+            <button className="context-menu-item danger" onClick={async () => {
+              const id = contextMenu.plugin.id;
+              setContextMenu(null);
+              await handleUninstall(id);
+              if (activePage === id) setActivePage(null);
+            }}>
+              {t("contextUninstall")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showPluginInfo && (
+        <div className="qr-modal-overlay" onClick={() => setShowPluginInfo(null)}>
+          <div className="qr-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <button className="qr-modal-close" onClick={() => setShowPluginInfo(null)}>
+              <X size={18} />
+            </button>
+            <h3 className="qr-modal-title">{showPluginInfo.name[lang]}</h3>
+            <div className="plugin-info-content">
+              <div className="plugin-info-row"><span className="plugin-info-label">{t("infoId")}</span><span>{showPluginInfo.id}</span></div>
+              <div className="plugin-info-row"><span className="plugin-info-label">{t("infoVersion")}</span><span>{showPluginInfo.version}</span></div>
+              <div className="plugin-info-row"><span className="plugin-info-label">{t("infoAuthor")}</span><span>{showPluginInfo.author}</span></div>
+              <div className="plugin-info-row"><span className="plugin-info-label">{t("infoType")}</span><span>{showPluginInfo.type}</span></div>
+              <div className="plugin-info-desc">{showPluginInfo.description[lang]}</div>
             </div>
           </div>
         </div>
