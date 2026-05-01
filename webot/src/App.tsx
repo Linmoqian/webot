@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -149,10 +149,6 @@ function renderMessageContent(msg: Message, mediaDir: string) {
 
 const mockPlugins = [
   { id: "weather", nameKey: "pluginWeatherName", descKey: "pluginWeatherDesc", icon: Cloud, author: "Webot Team", version: "1.0.0" },
-  { id: "search", nameKey: "pluginSearchName", descKey: "pluginSearchDesc", icon: Search, author: "Webot Team", version: "1.0.0" },
-  { id: "code", nameKey: "pluginCodeName", descKey: "pluginCodeDesc", icon: Code, author: "Webot Team", version: "1.0.0" },
-  { id: "translate", nameKey: "pluginTranslateName", descKey: "pluginTranslateDesc", icon: Languages, author: "Webot Team", version: "1.0.0" },
-  { id: "news", nameKey: "pluginNewsName", descKey: "pluginNewsDesc", icon: Newspaper, author: "Webot Team", version: "1.0.0" },
 ];
 
 function applyTheme(theme: Theme) {
