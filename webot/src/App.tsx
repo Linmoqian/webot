@@ -187,7 +187,14 @@ function App() {
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
-  const [installedPlugins, setInstalledPlugins] = useState<Set<string>>(new Set());
+  const [installedPlugins, setInstalledPlugins] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem("webot-installed-plugins");
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [marketplaceSearch, setMarketplaceSearch] = useState("");
 
   const [theme, setThemeState] = useState<Theme>(
@@ -205,6 +212,13 @@ function App() {
       return () => mq.removeEventListener("change", handler);
     }
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "webot-installed-plugins",
+      JSON.stringify(Array.from(installedPlugins))
+    );
+  }, [installedPlugins]);
 
   useEffect(() => {
     invoke<{ wechat: { media_dir: string | null } }>("get_settings")
@@ -375,6 +389,21 @@ function App() {
         });
       });
 
+      const unlistenToolCall = await listen<{ name: string; arguments: Record<string, unknown> }>("chat-tool-call", (event) => {
+        const argsPreview = Object.entries(event.payload.arguments)
+          .map(([k, v]) => `${k}: ${String(v)}`)
+          .join(", ");
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = {
+            ...last,
+            content: last.content + `\n[调用工具: ${event.payload.name}(${argsPreview})]\n`,
+          };
+          return updated;
+        });
+      });
+
       const unlistenText = await listen<{ content: string }>("chat-text", (event) => {
         setMessages(prev => {
           const updated = [...prev];
@@ -416,12 +445,14 @@ function App() {
 
       cleanup.current = () => {
         unlistenThinking();
+        unlistenToolCall();
         unlistenText();
         unlistenDone();
         unlistenError();
       };
 
-      await invoke("start_chat", { message: userMessage });
+      const toolIds = installedPlugins.size > 0 ? Array.from(installedPlugins) : undefined;
+      await invoke("start_chat", { message: userMessage, toolIds });
     } catch {
       setMessages(prev => {
         const updated = [...prev];
