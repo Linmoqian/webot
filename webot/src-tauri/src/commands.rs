@@ -826,3 +826,22 @@ pub fn install_plugin(plugin: crate::plugins::PluginManifest) -> Result<(), Stri
 pub fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
     crate::plugins::remove_plugin(&plugin_id)
 }
+
+#[tauri::command]
+pub async fn start_roundtable(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    topic: String,
+    roles: Option<Vec<String>>,
+) -> Result<(), String> {
+    let config = state.settings.lock().unwrap().clone().provider;
+    let args = serde_json::json!({
+        "topic": topic,
+        "roles": roles.unwrap_or_default(),
+    });
+    tokio::spawn(async move {
+        let result = crate::tools::execute_roundtable(args, &config, &app).await;
+        let _ = app.emit("roundtable-done", serde_json::json!({ "result": result }));
+    });
+    Ok(())
+}

@@ -107,7 +107,7 @@ pub async fn execute_tool_async(
     }
 }
 
-async fn execute_roundtable(
+pub async fn execute_roundtable(
     args: Value,
     config: &ProviderConfig,
     app: &AppHandle,

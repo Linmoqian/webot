@@ -19,6 +19,14 @@ pub struct SlotConfig {
 pub struct PluginSlots {
     #[serde(default)]
     pub tool_result: Option<SlotConfig>,
+    #[serde(default)]
+    pub page: Option<PageSlot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PageSlot {
+    pub icon: String,
+    pub label: LocalizedText,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
