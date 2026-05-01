@@ -112,3 +112,87 @@ pub async fn call_llm(
         .to_string();
     Ok(content)
 }
+
+pub async fn chat_with_tools(
+    config: &ProviderConfig,
+    messages: &[Value],
+    tools: &[Value],
+    app: &AppHandle,
+) -> Result<String, String> {
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(config.timeout))
+        .danger_accept_invalid_certs(!config.verify_ssl)
+        .build()
+        .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))?;
+
+    let url = format!("{}/chat/completions", config.base_url.trim_end_matches('/'));
+    let mut all_messages = messages.to_vec();
+    let max_rounds = 3;
+
+    for _ in 0..max_rounds {
+        let body = serde_json::json!({
+            "model": config.model,
+            "messages": &all_messages,
+            "stream": false,
+            "tools": tools,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", config.api_key))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("请求 LLM API 失败: {e}"))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(format!("LLM API 错误 {status}: {text}"));
+        }
+
+        let data: Value = response.json().await.map_err(|e| format!("解析响应失败: {e}"))?;
+        let msg = &data["choices"][0]["message"];
+
+        let tool_calls = msg
+            .get("tool_calls")
+            .and_then(|v| v.as_array())
+            .filter(|arr| !arr.is_empty());
+
+        if let Some(calls) = tool_calls {
+            all_messages.push(msg.clone());
+
+            for call in calls {
+                let name = call["function"]["name"].as_str().unwrap_or("");
+                let args_str = call["function"]["arguments"].as_str().unwrap_or("{}");
+                let args: Value =
+                    serde_json::from_str(args_str).unwrap_or_else(|_| serde_json::json!({}));
+
+                let _ = app.emit(
+                    "chat-tool-call",
+                    serde_json::json!({ "name": name, "arguments": args }),
+                );
+
+                let result = crate::tools::execute_tool(name, args);
+
+                all_messages.push(serde_json::json!({
+                    "role": "tool",
+                    "tool_call_id": call["id"],
+                    "content": result,
+                }));
+            }
+            continue;
+        }
+
+        let content = msg["content"].as_str().unwrap_or("").to_string();
+        if !content.is_empty() {
+            let _ = app.emit(
+                "chat-text",
+                serde_json::json!({ "content": &content }),
+            );
+        }
+        return Ok(content);
+    }
+
+    Err("工具调用超过最大轮次限制 (3)".into())
+}

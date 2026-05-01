@@ -212,6 +212,7 @@ pub async fn start_chat(
     app: AppHandle,
     state: State<'_, AppState>,
     message: String,
+    tool_ids: Option<Vec<String>>,
 ) -> Result<(), String> {
     let settings = state.settings.lock().unwrap().clone();
 
@@ -241,9 +242,20 @@ pub async fn start_chat(
     };
 
     let provider_config = settings.provider;
+    let tools = tool_ids
+        .as_ref()
+        .filter(|ids| !ids.is_empty())
+        .map(|ids| crate::tools::get_tool_definitions(ids))
+        .unwrap_or_default();
 
     tokio::spawn(async move {
-        match crate::llm::stream_and_emit(&provider_config, &all_msgs, &app).await {
+        let result = if tools.is_empty() {
+            crate::llm::stream_and_emit(&provider_config, &all_msgs, &app).await
+        } else {
+            crate::llm::chat_with_tools(&provider_config, &all_msgs, &tools, &app).await
+        };
+
+        match result {
             Ok(full_response) => {
                 let state = app.state::<AppState>();
                 state.messages.lock().unwrap().push(serde_json::json!({
