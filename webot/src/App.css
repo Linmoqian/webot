@@ -1540,38 +1540,44 @@ textarea::placeholder {
 .role-tag-remove:hover { color: #e55; }
 
 .roundtable-role-name-input {
-  padding: 5px 8px;
+  padding: 6px 10px;
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   outline: none;
+  height: 32px;
+  box-sizing: border-box;
 }
 
 .roundtable-role-name-input:focus { border-color: #f97316; }
 
 .roundtable-role-trait-input {
   width: 100%;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 11px;
+  border-radius: 8px;
+  font-size: 13px;
   color: #666;
   outline: none;
+  height: 32px;
+  box-sizing: border-box;
 }
 
 .roundtable-role-trait-input:focus { border-color: #f97316; }
 
 .roundtable-stage-btn {
   width: 100%;
-  padding: 4px;
+  padding: 6px;
   border: 1px solid #ddd;
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #f97316;
   cursor: pointer;
+  height: 32px;
+  box-sizing: border-box;
   transition: all 0.15s;
 }
 
