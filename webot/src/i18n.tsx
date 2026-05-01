@@ -64,6 +64,11 @@ const translations: Record<Lang, Record<string, string>> = {
     pluginTranslateDesc: "让 AI 进行高质量多语言翻译",
     pluginNewsName: "新闻摘要",
     pluginNewsDesc: "让 AI 抓取并总结最新新闻资讯",
+    sidebarTitle: "插件面板",
+    sidebarPlugins: "已安装插件",
+    sidebarNoPlugins: "暂无已安装的插件",
+    sidebarActive: "已启用",
+    sidebarHistory: "工具调用历史",
   },
   en: {
     heroTitle: "What can I help you with today?",
@@ -125,6 +130,11 @@ const translations: Record<Lang, Record<string, string>> = {
     pluginTranslateDesc: "Let AI perform high-quality multi-language translation",
     pluginNewsName: "News Summary",
     pluginNewsDesc: "Let AI fetch and summarize the latest news",
+    sidebarTitle: "Plugin Panel",
+    sidebarPlugins: "Installed Plugins",
+    sidebarNoPlugins: "No plugins installed",
+    sidebarActive: "Active",
+    sidebarHistory: "Tool Call History",
   },
 };
 

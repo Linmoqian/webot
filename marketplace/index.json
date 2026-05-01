@@ -22,7 +22,10 @@
           }
         }
       },
-      "endpoint": null
+      "endpoint": null,
+      "slots": {
+        "tool_result": { "renderer": "card" }
+      }
     }
   ]
 }

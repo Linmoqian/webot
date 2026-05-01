@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -13,6 +13,12 @@ import "highlight.js/styles/github.css";
 import "katex/dist/katex.min.css";
 import "./App.css";
 
+interface ToolResultEvent {
+  name: string;
+  result: string;
+  renderer: "card" | "table" | "markdown" | "text";
+}
+
 interface Message {
   role: "user" | "agent";
   content: string;
@@ -20,6 +26,7 @@ interface Message {
   isThinking?: boolean;
   isFinished?: boolean;
   showReasoning?: boolean;
+  toolResults?: ToolResultEvent[];
 }
 
 const THEME_KEY = "webot-theme";
@@ -116,6 +123,62 @@ function preprocessLocalImageLines(text: string, mediaDir = ""): string {
     .join("\n");
 }
 
+function CardRenderer({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="result-card-grid">
+      {Object.entries(data).map(([key, value]) => (
+        <div key={key} className="result-card-row">
+          <span className="result-card-key">{key}</span>
+          <span className="result-card-value">{String(value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TableRenderer({ data }: { data: Record<string, unknown>[] }) {
+  if (data.length === 0) return <div className="tool-result-text">No data</div>;
+  const columns = Object.keys(data[0]);
+  return (
+    <div className="result-table-wrapper">
+      <table className="result-table">
+        <thead>
+          <tr>{columns.map(c => <th key={c}>{c}</th>)}</tr>
+        </thead>
+        <tbody>
+          {data.map((row, i) => (
+            <tr key={i}>{columns.map(c => <td key={c}>{String(row[c] ?? "")}</td>)}</tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ToolResultCard({ event }: { event: ToolResultEvent }) {
+  let parsed: unknown = null;
+  try { parsed = JSON.parse(event.result); } catch { /* not JSON */ }
+
+  return (
+    <div className="tool-result-card">
+      <div className="tool-result-header">
+        <Zap size={14} />
+        <span>{event.name}</span>
+      </div>
+      <div className="tool-result-body">
+        {event.renderer === "card" && parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? <CardRenderer data={parsed as Record<string, unknown>} />
+          : event.renderer === "table" && Array.isArray(parsed)
+          ? <TableRenderer data={parsed as Record<string, unknown>[]} />
+          : event.renderer === "markdown"
+          ? renderMarkdown(event.result)
+          : <pre className="tool-result-text">{event.result}</pre>
+        }
+      </div>
+    </div>
+  );
+}
+
 function renderMarkdown(content: string, mediaDir = "") {
   return (
     <ReactMarkdown
@@ -157,6 +220,7 @@ interface PluginManifest {
   type: "builtin" | "http";
   tool: Record<string, unknown>;
   endpoint: string | null;
+  slots?: { tool_result?: { renderer: string } };
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -191,6 +255,7 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaDirRef = useRef<string>("");
   const [wechatConnected, setWechatConnected] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
   const [showWechatLog, setShowWechatLog] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -438,6 +503,18 @@ function App() {
         });
       });
 
+      const unlistenToolResult = await listen<ToolResultEvent>("chat-tool-result", (event) => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          updated[updated.length - 1] = {
+            ...last,
+            toolResults: [...(last.toolResults || []), event.payload],
+          };
+          return updated;
+        });
+      });
+
       const unlistenText = await listen<{ content: string }>("chat-text", (event) => {
         setMessages(prev => {
           const updated = [...prev];
@@ -480,6 +557,7 @@ function App() {
       cleanup.current = () => {
         unlistenThinking();
         unlistenToolCall();
+        unlistenToolResult();
         unlistenText();
         unlistenDone();
         unlistenError();
@@ -531,6 +609,9 @@ function App() {
           </button>
           <button className="settings-header-btn" onClick={openMarketplace} title={t("marketplaceTitle")}>
             <Store size={20} />
+          </button>
+          <button className={`settings-header-btn ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(!sidebarOpen)} title={t("sidebarTitle")}>
+            <LayoutDashboard size={20} />
           </button>
           <button className="settings-header-btn" onClick={openSettingsModal} title={t("tooltipSettings")}>
             <Settings size={20} />
@@ -586,6 +667,14 @@ function App() {
                             {renderMarkdown(msg.reasoning_content || "", mediaDirRef.current)}
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {msg.toolResults && msg.toolResults.length > 0 && (
+                      <div className="tool-results-container">
+                        {msg.toolResults.map((tr, i) => (
+                          <ToolResultCard key={i} event={tr} />
+                        ))}
                       </div>
                     )}
 
@@ -864,6 +953,54 @@ function App() {
             )}
           </div>
         </div>
+      )}
+
+      {sidebarOpen && (
+        <aside className="plugin-sidebar">
+          <div className="sidebar-header">
+            <h3>{t("sidebarPlugins")}</h3>
+            <button className="sidebar-close-btn" onClick={() => setSidebarOpen(false)}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="sidebar-plugin-list">
+            {installedPlugins.length === 0 ? (
+              <div className="sidebar-empty">{t("sidebarNoPlugins")}</div>
+            ) : (
+              installedPlugins.map(plugin => {
+                const IconComp = ICON_MAP[plugin.icon] || Sparkles;
+                return (
+                  <div key={plugin.id} className="sidebar-plugin-item">
+                    <div className="sidebar-plugin-icon">
+                      <IconComp size={18} />
+                    </div>
+                    <div className="sidebar-plugin-info">
+                      <div className="sidebar-plugin-name">{plugin.name[lang]}</div>
+                      <div className="sidebar-plugin-status">
+                        <span className="status-dot active" />
+                        {t("sidebarActive")}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="sidebar-history">
+            <div className="sidebar-history-title">{t("sidebarHistory")}</div>
+            {messages
+              .flatMap((msg, mi) => (msg.toolResults || []).map(tr => ({ ...tr, msgIndex: mi })))
+              .slice(-10)
+              .reverse()
+              .map((tr, i) => (
+                <div key={i} className="sidebar-history-item">
+                  <span className="sidebar-history-tool">{tr.name}</span>
+                  <span className="sidebar-history-time">#{tr.msgIndex + 1}</span>
+                </div>
+              ))
+            }
+          </div>
+        </aside>
       )}
     </div>
   );
