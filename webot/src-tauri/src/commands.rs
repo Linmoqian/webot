@@ -242,17 +242,18 @@ pub async fn start_chat(
     };
 
     let provider_config = settings.provider;
+    let installed_plugins = crate::plugins::load_installed_plugins();
     let tools = tool_ids
         .as_ref()
         .filter(|ids| !ids.is_empty())
-        .map(|ids| crate::tools::get_tool_definitions(ids))
+        .map(|ids| crate::tools::get_tool_definitions(ids, &installed_plugins))
         .unwrap_or_default();
 
     tokio::spawn(async move {
         let result = if tools.is_empty() {
             crate::llm::stream_and_emit(&provider_config, &all_msgs, &app).await
         } else {
-            crate::llm::chat_with_tools(&provider_config, &all_msgs, &tools, &app).await
+            crate::llm::chat_with_tools(&provider_config, &all_msgs, &tools, &installed_plugins, &app).await
         };
 
         match result {
@@ -803,4 +804,25 @@ pub async fn send_media(
         &base_info,
     )
     .await
+}
+
+#[tauri::command]
+pub async fn fetch_marketplace() -> Result<Vec<crate::plugins::PluginManifest>, String> {
+    let index = crate::plugins::fetch_marketplace_index().await?;
+    Ok(index.plugins)
+}
+
+#[tauri::command]
+pub fn get_installed_plugins() -> Result<Vec<crate::plugins::PluginManifest>, String> {
+    Ok(crate::plugins::load_installed_plugins())
+}
+
+#[tauri::command]
+pub fn install_plugin(plugin: crate::plugins::PluginManifest) -> Result<(), String> {
+    crate::plugins::save_plugin(&plugin)
+}
+
+#[tauri::command]
+pub fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
+    crate::plugins::remove_plugin(&plugin_id)
 }

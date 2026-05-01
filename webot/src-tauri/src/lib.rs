@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod llm;
 mod media;
+mod plugins;
 mod tools;
 
 use commands::AppState;
@@ -28,6 +29,10 @@ pub fn run() {
             commands::start_wechat_listener,
             commands::stop_wechat_listener,
             commands::send_media,
+            commands::fetch_marketplace,
+            commands::get_installed_plugins,
+            commands::install_plugin,
+            commands::uninstall_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
