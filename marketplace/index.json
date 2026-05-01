@@ -27,6 +27,93 @@
       "slots": {
         "tool_result": { "renderer": "card" }
       }
+    },
+    {
+      "id": "robot-control",
+      "name": { "zh": "机器人控制", "en": "Robot Control" },
+      "description": { "zh": "通过 AI 控制机器人运动、传感器读取与任务执行", "en": "Control robot movement, sensors and tasks via AI" },
+      "version": "0.1.0",
+      "author": "Webot Team",
+      "icon": "bot",
+      "type": "http",
+      "lab": true,
+      "tool": {
+        "type": "function",
+        "function": {
+          "name": "robot_control",
+          "description": "控制机器人执行动作，如移动、转向、抓取等",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "action": { "type": "string", "description": "动作类型：move, turn, grab, release, scan" },
+              "params": { "type": "object", "description": "动作参数" }
+            },
+            "required": ["action"]
+          }
+        }
+      },
+      "endpoint": null,
+      "slots": {
+        "tool_result": { "renderer": "card" }
+      }
+    },
+    {
+      "id": "novel-writing",
+      "name": { "zh": "小说创作", "en": "Novel Writing" },
+      "description": { "zh": "AI 辅助小说创作，支持角色设定、情节生成与章节续写", "en": "AI-assisted novel writing with character design and plot generation" },
+      "version": "0.1.0",
+      "author": "Webot Team",
+      "icon": "pen-tool",
+      "type": "http",
+      "lab": true,
+      "tool": {
+        "type": "function",
+        "function": {
+          "name": "novel_writing",
+          "description": "辅助小说创作，包括角色设定、情节构思、章节生成等",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "task": { "type": "string", "description": "创作任务：character, plot, chapter, revise" },
+              "context": { "type": "string", "description": "创作上下文或要求" }
+            },
+            "required": ["task"]
+          }
+        }
+      },
+      "endpoint": null,
+      "slots": {
+        "tool_result": { "renderer": "markdown" }
+      }
+    },
+    {
+      "id": "roundtable",
+      "name": { "zh": "圆桌会议", "en": "Roundtable Meeting" },
+      "description": { "zh": "模拟多位专家围绕主题展开激烈讨论，输出结构化会议纪要", "en": "Simulate expert roundtable discussion with structured minutes" },
+      "version": "0.1.0",
+      "author": "Webot Team",
+      "icon": "users",
+      "type": "http",
+      "lab": true,
+      "tool": {
+        "type": "function",
+        "function": {
+          "name": "roundtable",
+          "description": "发起圆桌会议，多位专家角色围绕主题展开讨论",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "topic": { "type": "string", "description": "讨论主题" },
+              "roles": { "type": "array", "items": { "type": "string" }, "description": "参与角色列表" }
+            },
+            "required": ["topic"]
+          }
+        }
+      },
+      "endpoint": null,
+      "slots": {
+        "tool_result": { "renderer": "markdown" }
+      }
     }
   ]
 }
