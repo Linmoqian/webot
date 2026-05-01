@@ -1094,6 +1094,90 @@ textarea::placeholder {
   font-size: 13px;
 }
 
+/* Lab section (虾烤实验室) */
+.lab-section {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 8px;
+}
+
+.lab-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #f97316;
+}
+
+.lab-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lab-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff 100%);
+  border: 1px solid #fed7aa;
+  transition: background 0.2s;
+}
+
+.lab-card:hover {
+  background: linear-gradient(135deg, #fff1e0 0%, #fefefe 100%);
+}
+
+.lab-card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #fff7ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f97316;
+  flex-shrink: 0;
+}
+
+.lab-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.lab-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.lab-card-desc {
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.lab-install-btn {
+  padding: 5px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f97316;
+  color: white;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.lab-install-btn:hover {
+  background: #ea580c;
+}
+
 /* Tool result cards */
 .tool-results-container {
   display: flex;
@@ -1493,6 +1577,14 @@ textarea::placeholder {
   .marketplace-install-btn:hover { background: #e5e5e5; }
   .marketplace-installed-badge { background: #2a2a2a; color: #777; }
   .marketplace-installed-badge:hover { background: #333; color: #aaa; }
+
+  .lab-header { color: #fb923c; }
+  .lab-card { background: linear-gradient(135deg, #2a1f0f 0%, #1e1e1e 100%); border-color: #4a3520; }
+  .lab-card:hover { background: linear-gradient(135deg, #352810 0%, #222 100%); }
+  .lab-card-icon { background: #2a1f0f; color: #fb923c; }
+  .lab-card-name { color: #e5e5e5; }
+  .lab-install-btn { background: #f97316; }
+  .lab-install-btn:hover { background: #ea580c; }
 
   .tool-result-card { border-color: #333; background: #1e1e1e; }
   .tool-result-header { background: #2a2a2a; color: #999; }

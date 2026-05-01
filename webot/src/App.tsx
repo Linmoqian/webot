@@ -221,6 +221,7 @@ interface PluginManifest {
   tool: Record<string, unknown>;
   endpoint: string | null;
   slots?: { tool_result?: { renderer: string } };
+  lab?: boolean;
 }
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
@@ -915,41 +916,81 @@ function App() {
             ) : marketplaceError ? (
               <div className="marketplace-error">{t("marketplaceError")}</div>
             ) : (
-              <div className="marketplace-grid">
-                {marketplacePlugins.length === 0 ? (
-                  <div className="marketplace-error">{t("marketplaceEmpty")}</div>
-                ) : (
-                  marketplacePlugins
-                    .filter(p =>
-                      p.name[lang].toLowerCase().includes(marketplaceSearch.toLowerCase()) ||
-                      p.description[lang].toLowerCase().includes(marketplaceSearch.toLowerCase())
-                    )
-                    .map(plugin => {
-                      const IconComp = ICON_MAP[plugin.icon] || Sparkles;
-                      const installed = installedPlugins.some(p => p.id === plugin.id);
-                      return (
-                        <div key={plugin.id} className="marketplace-card">
-                          <div className="marketplace-card-icon">
-                            <IconComp size={22} />
+              <>
+                {marketplaceSearch === "" && (() => {
+                  const labPlugins = marketplacePlugins.filter(p => p.lab);
+                  if (labPlugins.length === 0) return null;
+                  return (
+                    <div className="lab-section">
+                      <div className="lab-header">
+                        <Sparkles size={14} />
+                        <span>{t("labTitle")}</span>
+                      </div>
+                      <div className="lab-grid">
+                        {labPlugins.map(plugin => {
+                          const IconComp = ICON_MAP[plugin.icon] || Sparkles;
+                          const installed = installedPlugins.some(p => p.id === plugin.id);
+                          return (
+                            <div key={plugin.id} className="lab-card">
+                              <div className="lab-card-icon">
+                                <IconComp size={20} />
+                              </div>
+                              <div className="lab-card-info">
+                                <div className="lab-card-name">{plugin.name[lang]}</div>
+                                <div className="lab-card-desc">{plugin.description[lang]}</div>
+                              </div>
+                              {installed ? (
+                                <button className="marketplace-installed-badge" onClick={() => handleUninstall(plugin.id)}>
+                                  {t("marketplaceInstalled")}
+                                </button>
+                              ) : (
+                                <button className="lab-install-btn" onClick={() => handleInstall(plugin)}>
+                                  {t("marketplaceInstall")}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+                <div className="marketplace-grid">
+                  {marketplacePlugins.length === 0 ? (
+                    <div className="marketplace-error">{t("marketplaceEmpty")}</div>
+                  ) : (
+                    marketplacePlugins
+                      .filter(p =>
+                        p.name[lang].toLowerCase().includes(marketplaceSearch.toLowerCase()) ||
+                        p.description[lang].toLowerCase().includes(marketplaceSearch.toLowerCase())
+                      )
+                      .map(plugin => {
+                        const IconComp = ICON_MAP[plugin.icon] || Sparkles;
+                        const installed = installedPlugins.some(p => p.id === plugin.id);
+                        return (
+                          <div key={plugin.id} className="marketplace-card">
+                            <div className="marketplace-card-icon">
+                              <IconComp size={22} />
+                            </div>
+                            <div className="marketplace-card-info">
+                              <div className="marketplace-card-name">{plugin.name[lang]}</div>
+                              <div className="marketplace-card-desc">{plugin.description[lang]}</div>
+                            </div>
+                            {installed ? (
+                              <button className="marketplace-installed-badge" onClick={() => handleUninstall(plugin.id)}>
+                                {t("marketplaceUninstall")}
+                              </button>
+                            ) : (
+                              <button className="marketplace-install-btn" onClick={() => handleInstall(plugin)}>
+                                {t("marketplaceInstall")}
+                              </button>
+                            )}
                           </div>
-                          <div className="marketplace-card-info">
-                            <div className="marketplace-card-name">{plugin.name[lang]}</div>
-                            <div className="marketplace-card-desc">{plugin.description[lang]}</div>
-                          </div>
-                          {installed ? (
-                            <button className="marketplace-installed-badge" onClick={() => handleUninstall(plugin.id)}>
-                              {t("marketplaceUninstall")}
-                            </button>
-                          ) : (
-                            <button className="marketplace-install-btn" onClick={() => handleInstall(plugin)}>
-                              {t("marketplaceInstall")}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })
-                )}
-              </div>
+                        );
+                      })
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>

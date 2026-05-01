@@ -34,6 +34,8 @@ pub struct PluginManifest {
     pub tool: Value,
     pub endpoint: Option<String>,
     #[serde(default)]
+    pub lab: Option<bool>,
+    #[serde(default)]
     pub slots: Option<PluginSlots>,
 }
 
