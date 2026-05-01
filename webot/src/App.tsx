@@ -302,13 +302,36 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const unlistenSpeaker = listen<{ round: number; role: string; status: string; content?: string }>("roundtable-speaker", event => {
-      const { round, role, status, content } = event.payload;
-      if (status === "done" && content) {
+    const unlistenSpeaker = listen<{ round: number; role: string; status: string; content?: string; delta?: string }>("roundtable-speaker", event => {
+      const { round, role, status, content, delta } = event.payload;
+
+      if (status === "start") {
         setRoundtableSpeakers(prev => {
           const existingRoles = [...new Set(prev.map(s => s.role))];
           const colorIndex = existingRoles.includes(role) ? existingRoles.indexOf(role) : existingRoles.length;
-          return [...prev, { round, role, content, color: ROLE_COLORS[colorIndex % ROLE_COLORS.length] }];
+          return [...prev, { round, role, content: "", color: ROLE_COLORS[colorIndex % ROLE_COLORS.length] }];
+        });
+      } else if (status === "streaming" && delta) {
+        setRoundtableSpeakers(prev => {
+          const updated = [...prev];
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].role === role && updated[i].round === round) {
+              updated[i] = { ...updated[i], content: updated[i].content + delta };
+              break;
+            }
+          }
+          return updated;
+        });
+      } else if (status === "done" && content) {
+        setRoundtableSpeakers(prev => {
+          const updated = [...prev];
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].role === role && updated[i].round === round) {
+              updated[i] = { ...updated[i], content };
+              break;
+            }
+          }
+          return updated;
         });
       }
     });

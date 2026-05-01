@@ -157,12 +157,14 @@ pub async fn execute_roundtable(
                 json!({ "role": "user", "content": format!("请{role}就「{topic}」发表第{round}轮观点") }),
             ];
 
+            let base_payload = json!({ "round": round, "role": role });
+
             let _ = app.emit(
                 "roundtable-speaker",
-                json!({ "round": round, "role": role, "status": "speaking" }),
+                json!({ "round": round, "role": role, "status": "start" }),
             );
 
-            match crate::llm::call_llm(config, &messages).await {
+            match crate::llm::stream_llm(config, &messages, app, "roundtable-speaker", base_payload).await {
                 Ok(content) => {
                     discussion.push_str(&format!("**{role}**：{content}\n\n"));
                     let _ = app.emit(
