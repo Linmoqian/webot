@@ -5,7 +5,7 @@
       "name": { "zh": "天气查询", "en": "Weather Query" },
       "description": { "zh": "让 AI 实时查询全球城市天气信息", "en": "Let AI query real-time weather for any city" },
       "version": "1.0.0",
-      "author": "虾烤实验室",
+      "author": "Webot Team",
       "icon": "cloud",
       "type": "builtin",
       "lab": true,
