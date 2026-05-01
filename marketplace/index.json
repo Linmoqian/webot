@@ -1,0 +1,28 @@
+{
+  "plugins": [
+    {
+      "id": "weather",
+      "name": { "zh": "天气查询", "en": "Weather Query" },
+      "description": { "zh": "让 AI 实时查询全球城市天气信息", "en": "Let AI query real-time weather for any city" },
+      "version": "1.0.0",
+      "author": "Webot Team",
+      "icon": "cloud",
+      "type": "builtin",
+      "tool": {
+        "type": "function",
+        "function": {
+          "name": "weather",
+          "description": "获取指定城市的天气信息，包括温度、天气状况、湿度和风力",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "city": { "type": "string", "description": "城市名称，如：北京、上海" }
+            },
+            "required": ["city"]
+          }
+        }
+      },
+      "endpoint": null
+    }
+  ]
+}
