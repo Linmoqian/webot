@@ -99,25 +99,34 @@ pub fn remove_plugin(id: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn local_marketplace_path() -> Option<std::path::PathBuf> {
+    crate::config::config_path()
+        .and_then(|p| p.parent().map(|dir| dir.join("marketplace").join("index.json")))
+}
+
+fn load_local_marketplace() -> Option<MarketplaceIndex> {
+    let path = local_marketplace_path()?;
+    let content = std::fs::read_to_string(path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
 pub async fn fetch_marketplace_index() -> Result<MarketplaceIndex, String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("创建 HTTP 客户端失败: {e}"))?;
 
-    let resp = client
-        .get(MARKETPLACE_URL)
-        .send()
-        .await
-        .map_err(|e| format!("获取市场索引失败: {e}"))?;
-
-    if !resp.status().is_success() {
-        return Err(format!("市场索引请求失败: {}", resp.status()));
+    match client.get(MARKETPLACE_URL).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            resp.json::<MarketplaceIndex>()
+                .await
+                .map_err(|e| format!("解析市场索引失败: {e}"))
+        }
+        _ => {
+            load_local_marketplace()
+                .ok_or_else(|| "远程市场不可用，本地索引未找到".to_string())
+        }
     }
-
-    resp.json::<MarketplaceIndex>()
-        .await
-        .map_err(|e| format!("解析市场索引失败: {e}"))
 }
 
 pub async fn execute_http_tool(endpoint: &str, args: Value) -> Result<String, String> {
