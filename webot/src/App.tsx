@@ -264,7 +264,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<string | null>(null);
   const [roundtableTopic, setRoundtableTopic] = useState("");
-  const [roundtableRoles, setRoundtableRoles] = useState<{ name: string; trait: string }[]>([]);
+  const [roundtableBackstage, setRoundtableBackstage] = useState<{ name: string; trait: string }[]>([]);
+  const [roundtableOnStage, setRoundtableOnStage] = useState<{ name: string; trait: string }[]>([]);
   const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string; color: string }[]>([]);
   const [roundtableRunning, setRoundtableRunning] = useState(false);
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
@@ -1122,12 +1123,7 @@ function App() {
         <div className="roundtable-page">
           <div className="roundtable-page-header">
             <h3>{t("roundtableTitle")}</h3>
-            <button className="sidebar-close-btn" onClick={() => { setActivePage(null); setRoundtableRunning(false); setRoundtableSpeakers([]); setRoundtableResult(null); }}>
-              <X size={16} />
-            </button>
-          </div>
-          <div className="roundtable-page-body">
-            <div className="roundtable-config">
+            <div className="roundtable-header-actions">
               <input
                 className="roundtable-topic-input"
                 type="text"
@@ -1136,44 +1132,6 @@ function App() {
                 onChange={e => setRoundtableTopic(e.target.value)}
                 disabled={roundtableRunning}
               />
-              <div className="roundtable-roles">
-                <div className="roundtable-roles-label">{t("roundtableRoles")}</div>
-                <div className="roundtable-role-list">
-                  {roundtableRoles.map((role, i) => (
-                    <div key={i} className="roundtable-role-card" style={{ borderLeftColor: ROLE_COLORS[i % ROLE_COLORS.length] }}>
-                      <div className="roundtable-role-card-header">
-                        <div className="roundtable-role-avatar-sm" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>
-                          {role.name[0]}
-                        </div>
-                        {!roundtableRunning && (
-                          <button className="role-tag-remove" onClick={() => setRoundtableRoles(prev => prev.filter((_, j) => j !== i))}>x</button>
-                        )}
-                      </div>
-                      <input
-                        className="roundtable-role-name-input"
-                        type="text"
-                        placeholder={t("roundtableRoleName")}
-                        value={role.name}
-                        onChange={e => setRoundtableRoles(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                        disabled={roundtableRunning}
-                      />
-                      <input
-                        className="roundtable-role-trait-input"
-                        type="text"
-                        placeholder={t("roundtableRoleTrait")}
-                        value={role.trait}
-                        onChange={e => setRoundtableRoles(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
-                        disabled={roundtableRunning}
-                      />
-                    </div>
-                  ))}
-                </div>
-                {!roundtableRunning && (
-                  <button className="roundtable-add-role-btn" onClick={() => setRoundtableRoles(prev => [...prev, { name: "", trait: "" }])}>
-                    + {t("roundtableAddRole")}
-                  </button>
-                )}
-              </div>
               <button
                 className="roundtable-start-btn"
                 disabled={roundtableRunning || !roundtableTopic.trim()}
@@ -1181,7 +1139,7 @@ function App() {
                   setRoundtableRunning(true);
                   setRoundtableSpeakers([]);
                   setRoundtableResult(null);
-                  const roleNames = roundtableRoles.filter(r => r.name.trim()).map(r => {
+                  const roleNames = roundtableOnStage.filter(r => r.name.trim()).map(r => {
                     const trait = r.trait.trim();
                     return trait ? `${r.name.trim()}（${trait}）` : r.name.trim();
                   });
@@ -1194,28 +1152,105 @@ function App() {
                 {roundtableRunning ? <Loader2 size={16} className="spinner" /> : t("roundtableStart")}
               </button>
             </div>
-            <div className="roundtable-discussion">
-              {roundtableSpeakers.length === 0 && !roundtableResult && (
-                <div className="roundtable-empty">
-                  <Users size={48} />
-                  <p>{t("roundtableEmpty")}</p>
-                </div>
-              )}
-              {roundtableSpeakers.map((speaker, i) => (
-                <div key={i} className="roundtable-speaker-card" style={{ borderLeftColor: speaker.color }}>
-                  <div className="roundtable-speaker-header">
-                    <div className="roundtable-speaker-avatar" style={{ background: speaker.color }}>{speaker.role[0]}</div>
-                    <span className="roundtable-speaker-name">{speaker.role}</span>
-                    <span className="roundtable-speaker-round">R{speaker.round}</span>
+            <button className="sidebar-close-btn" onClick={() => { setActivePage(null); setRoundtableRunning(false); setRoundtableSpeakers([]); setRoundtableResult(null); }}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="roundtable-page-body">
+            <div className="roundtable-side">
+              <div className="roundtable-side-title">{t("roundtableBackstage")}</div>
+              <div className="roundtable-role-list">
+                {roundtableBackstage.map((role, i) => (
+                  <div key={i} className="roundtable-role-card">
+                    <div className="roundtable-role-card-top">
+                      <input
+                        className="roundtable-role-name-input"
+                        type="text"
+                        placeholder={t("roundtableRoleName")}
+                        value={role.name}
+                        onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                        disabled={roundtableRunning}
+                      />
+                      {!roundtableRunning && (
+                        <button className="role-tag-remove" onClick={() => setRoundtableBackstage(prev => prev.filter((_, j) => j !== i))}>x</button>
+                      )}
+                    </div>
+                    <input
+                      className="roundtable-role-trait-input"
+                      type="text"
+                      placeholder={t("roundtableRoleTrait")}
+                      value={role.trait}
+                      onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
+                      disabled={roundtableRunning}
+                    />
+                    <button
+                      className="roundtable-stage-btn"
+                      disabled={roundtableRunning || !role.name.trim()}
+                      onClick={() => {
+                        setRoundtableBackstage(prev => prev.filter((_, j) => j !== i));
+                        setRoundtableOnStage(prev => [...prev, role]);
+                      }}
+                    >
+                      {t("roundtableGoStage")}
+                    </button>
                   </div>
-                  <div className="roundtable-speaker-content">{speaker.content}</div>
-                </div>
-              ))}
-              {roundtableResult && (
-                <div className="roundtable-summary">
-                  {renderMarkdown(roundtableResult)}
-                </div>
+                ))}
+              </div>
+              {!roundtableRunning && (
+                <button className="roundtable-add-role-btn" onClick={() => setRoundtableBackstage(prev => [...prev, { name: "", trait: "" }])}>
+                  + {t("roundtableAddRole")}
+                </button>
               )}
+            </div>
+            <div className="roundtable-main">
+              <div className="roundtable-stage-roster">
+                <div className="roundtable-side-title">{t("roundtableOnStage")}</div>
+                <div className="roundtable-stage-list">
+                  {roundtableOnStage.length === 0 && !roundtableRunning && (
+                    <div className="roundtable-stage-empty">{t("roundtableStageEmpty")}</div>
+                  )}
+                  {roundtableOnStage.map((role, i) => (
+                    <div key={i} className="roundtable-stage-chip" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] + "18", borderLeftColor: ROLE_COLORS[i % ROLE_COLORS.length] }}>
+                      <div className="roundtable-stage-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
+                      <div className="roundtable-stage-info">
+                        <span className="roundtable-stage-name">{role.name}</span>
+                        {role.trait && <span className="roundtable-stage-trait">{role.trait}</span>}
+                      </div>
+                      {!roundtableRunning && (
+                        <button className="roundtable-offstage-btn" onClick={() => {
+                          setRoundtableOnStage(prev => prev.filter((_, j) => j !== i));
+                          setRoundtableBackstage(prev => [...prev, role]);
+                        }}>
+                          {t("roundtableOffStage")}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="roundtable-discussion">
+                {roundtableSpeakers.length === 0 && !roundtableResult && (
+                  <div className="roundtable-empty">
+                    <Users size={48} />
+                    <p>{t("roundtableEmpty")}</p>
+                  </div>
+                )}
+                {roundtableSpeakers.map((speaker, i) => (
+                  <div key={i} className="roundtable-speaker-card" style={{ borderLeftColor: speaker.color }}>
+                    <div className="roundtable-speaker-header">
+                      <div className="roundtable-speaker-avatar" style={{ background: speaker.color }}>{speaker.role[0]}</div>
+                      <span className="roundtable-speaker-name">{speaker.role}</span>
+                      <span className="roundtable-speaker-round">R{speaker.round}</span>
+                    </div>
+                    <div className="roundtable-speaker-content">{speaker.content}</div>
+                  </div>
+                ))}
+                {roundtableResult && (
+                  <div className="roundtable-summary">
+                    {renderMarkdown(roundtableResult)}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

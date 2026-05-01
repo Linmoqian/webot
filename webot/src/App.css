@@ -1422,43 +1422,32 @@ textarea::placeholder {
 .roundtable-page-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 16px 24px;
+  gap: 16px;
+  padding: 12px 20px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .roundtable-page-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  white-space: nowrap;
 }
 
-.roundtable-page-body {
+.roundtable-header-actions {
   flex: 1;
   display: flex;
-  gap: 0;
-  overflow: hidden;
-}
-
-.roundtable-config {
-  width: 300px;
-  flex-shrink: 0;
-  padding: 24px;
-  border-right: 1px solid #f0f0f0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 10px;
 }
 
 .roundtable-topic-input {
-  width: 100%;
-  padding: 10px 14px;
+  flex: 1;
+  max-width: 400px;
+  padding: 7px 14px;
   border: 1px solid #e5e5e5;
-  border-radius: 10px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 13px;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -1467,24 +1456,59 @@ textarea::placeholder {
   border-color: #f97316;
 }
 
-.roundtable-roles-label {
-  font-size: 12px;
+.roundtable-start-btn {
+  padding: 7px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #f97316;
+  color: white;
+  font-size: 13px;
   font-weight: 600;
-  color: #666;
-  margin-bottom: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.roundtable-start-btn:hover:not(:disabled) { background: #ea580c; }
+.roundtable-start-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+.roundtable-page-body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+}
+
+.roundtable-side {
+  width: 280px;
+  flex-shrink: 0;
+  padding: 16px;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+
+.roundtable-side-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
 }
 
 .roundtable-role-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 320px;
-  overflow-y: auto;
 }
 
 .roundtable-role-card {
   border: 1px solid #e5e5e5;
-  border-left: 3px solid #ccc;
   border-radius: 10px;
   padding: 10px 12px;
   display: flex;
@@ -1492,65 +1516,72 @@ textarea::placeholder {
   gap: 6px;
 }
 
-.roundtable-role-card-header {
+.roundtable-role-card-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
 }
 
-.roundtable-role-avatar-sm {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
+.roundtable-role-card-top .roundtable-role-name-input {
+  flex: 1;
 }
 
 .role-tag-remove {
   background: none;
   border: none;
   cursor: pointer;
-  color: #999;
-  font-size: 12px;
-  padding: 0;
+  color: #bbb;
+  font-size: 13px;
+  padding: 2px 4px;
   line-height: 1;
+  border-radius: 4px;
 }
 
-.role-tag-remove:hover {
-  color: #e55;
-}
+.role-tag-remove:hover { color: #e55; }
 
 .roundtable-role-name-input {
-  width: 100%;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 6px;
+  font-size: 12px;
   font-weight: 600;
   outline: none;
 }
 
-.roundtable-role-name-input:focus {
-  border-color: #f97316;
-}
+.roundtable-role-name-input:focus { border-color: #f97316; }
 
 .roundtable-role-trait-input {
   width: 100%;
-  padding: 5px 10px;
+  padding: 4px 8px;
   border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 6px;
+  font-size: 11px;
   color: #666;
   outline: none;
 }
 
-.roundtable-role-trait-input:focus {
+.roundtable-role-trait-input:focus { border-color: #f97316; }
+
+.roundtable-stage-btn {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  font-size: 11px;
+  font-weight: 600;
+  color: #f97316;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.roundtable-stage-btn:hover:not(:disabled) {
+  background: #f97316;
+  color: white;
   border-color: #f97316;
 }
+
+.roundtable-stage-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .roundtable-add-role-btn {
   width: 100%;
@@ -1564,41 +1595,88 @@ textarea::placeholder {
   transition: all 0.2s;
 }
 
-.roundtable-add-role-btn:hover {
-  border-color: #f97316;
-  color: #f97316;
-  background: #fff7ed;
+.roundtable-add-role-btn:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
+
+.roundtable-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.roundtable-start-btn {
-  width: 100%;
-  padding: 10px;
+.roundtable-stage-roster {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.roundtable-stage-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.roundtable-stage-empty {
+  font-size: 12px;
+  color: #bbb;
+  padding: 4px 0;
+}
+
+.roundtable-stage-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
   border-radius: 10px;
-  border: none;
-  background: #f97316;
+  border-left: 3px solid #ccc;
+}
+
+.roundtable-stage-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
   color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  transition: background 0.2s;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.roundtable-start-btn:hover:not(:disabled) {
-  background: #ea580c;
+.roundtable-stage-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.roundtable-start-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
+.roundtable-stage-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
 }
+
+.roundtable-stage-trait {
+  font-size: 10px;
+  color: #888;
+}
+
+.roundtable-offstage-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bbb;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.roundtable-offstage-btn:hover { color: #e55; background: #fef2f2; }
 
 .roundtable-discussion {
   flex: 1;
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -1608,52 +1686,43 @@ textarea::placeholder {
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #ccc;
+  color: #ddd;
   gap: 12px;
 }
 
-.roundtable-empty p {
-  font-size: 14px;
-  color: #999;
-}
+.roundtable-empty p { font-size: 13px; color: #aaa; }
 
 .roundtable-speaker-card {
   border: 1px solid #e5e5e5;
   border-left: 3px solid #ccc;
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  transition: border-color 0.2s;
+  padding: 14px 16px;
+  margin-bottom: 10px;
 }
 
 .roundtable-speaker-header {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .roundtable-speaker-avatar {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: #f97316;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
-.roundtable-speaker-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-}
+.roundtable-speaker-name { font-size: 13px; font-weight: 600; color: #333; }
 
 .roundtable-speaker-round {
-  font-size: 11px;
+  font-size: 10px;
   color: #999;
   margin-left: auto;
   background: #f5f5f5;
@@ -1661,15 +1730,11 @@ textarea::placeholder {
   border-radius: 4px;
 }
 
-.roundtable-speaker-content {
-  font-size: 14px;
-  color: #444;
-  line-height: 1.6;
-}
+.roundtable-speaker-content { font-size: 13px; color: #444; line-height: 1.6; }
 
 .roundtable-summary {
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 16px;
+  padding: 16px;
   border: 2px solid #f97316;
   border-radius: 12px;
   background: #fff7ed;
@@ -1962,16 +2027,24 @@ textarea::placeholder {
   .roundtable-page { background: #1a1a1a; }
   .roundtable-page-header { border-color: #2a2a2a; }
   .roundtable-page-header h3 { color: #e5e5e5; }
-  .roundtable-config { border-color: #2a2a2a; }
   .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-topic-input:focus { border-color: #f97316; }
-  .roundtable-roles-label { color: #999; }
+  .roundtable-side { border-color: #2a2a2a; }
+  .roundtable-side-title { color: #666; }
   .roundtable-role-card { border-color: #333; }
   .roundtable-role-name-input { background: #222; border-color: #333; color: #e5e5e5; }
   .roundtable-role-trait-input { background: #222; border-color: #333; color: #aaa; }
+  .roundtable-stage-btn { background: #222; color: #fb923c; border-color: #444; }
+  .roundtable-stage-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
   .roundtable-add-role-btn { border-color: #444; color: #777; }
   .roundtable-add-role-btn:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
-  .roundtable-empty p { color: #666; }
+  .roundtable-stage-roster { border-color: #2a2a2a; }
+  .roundtable-stage-empty { color: #555; }
+  .roundtable-stage-chip { background: #222; border-color: transparent; }
+  .roundtable-stage-name { color: #e5e5e5; }
+  .roundtable-stage-trait { color: #777; }
+  .roundtable-offstage-btn { color: #666; }
+  .roundtable-offstage-btn:hover { color: #f87171; background: #3a1a1a; }
+  .roundtable-empty p { color: #555; }
   .roundtable-speaker-card { border-color: #333; }
   .roundtable-speaker-name { color: #e5e5e5; }
   .roundtable-speaker-round { background: #2a2a2a; color: #777; }
