@@ -264,8 +264,18 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<string | null>(null);
   const [roundtableTopic, setRoundtableTopic] = useState("");
-  const [roundtableBackstage, setRoundtableBackstage] = useState<{ name: string; trait: string }[]>([]);
-  const [roundtableOnStage, setRoundtableOnStage] = useState<{ name: string; trait: string }[]>([]);
+  const [roundtableBackstage, setRoundtableBackstage] = useState<{ name: string; trait: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem("webot-roundtable-backstage");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [roundtableOnStage, setRoundtableOnStage] = useState<{ name: string; trait: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem("webot-roundtable-onstage");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string; color: string }[]>([]);
   const [roundtableRunning, setRoundtableRunning] = useState(false);
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
@@ -341,6 +351,14 @@ function App() {
     });
     return () => { unlistenSpeaker.then(fn => fn()); unlistenDone.then(fn => fn()); };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("webot-roundtable-backstage", JSON.stringify(roundtableBackstage));
+  }, [roundtableBackstage]);
+
+  useEffect(() => {
+    localStorage.setItem("webot-roundtable-onstage", JSON.stringify(roundtableOnStage));
+  }, [roundtableOnStage]);
 
   useEffect(() => {
     invoke<{ wechat: { media_dir: string | null } }>("get_settings")
