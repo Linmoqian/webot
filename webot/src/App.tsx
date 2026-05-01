@@ -1162,19 +1162,17 @@ function App() {
               <div className="roundtable-role-list">
                 {roundtableBackstage.map((role, i) => (
                   <div key={i} className="roundtable-role-card">
-                    <div className="roundtable-role-card-top">
-                      <input
-                        className="roundtable-role-name-input"
-                        type="text"
-                        placeholder={t("roundtableRoleName")}
-                        value={role.name}
-                        onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                        disabled={roundtableRunning}
-                      />
-                      {!roundtableRunning && (
-                        <button className="role-tag-remove" onClick={() => setRoundtableBackstage(prev => prev.filter((_, j) => j !== i))}>x</button>
-                      )}
-                    </div>
+                    {!roundtableRunning && (
+                      <button className="role-card-delete" onClick={() => setRoundtableBackstage(prev => prev.filter((_, j) => j !== i))}>x</button>
+                    )}
+                    <input
+                      className="roundtable-role-name-input"
+                      type="text"
+                      placeholder={t("roundtableRoleName")}
+                      value={role.name}
+                      onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                      disabled={roundtableRunning}
+                    />
                     <input
                       className="roundtable-role-trait-input"
                       type="text"
