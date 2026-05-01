@@ -244,6 +244,8 @@ function applyTheme(theme: Theme) {
   }
 }
 
+const ROLE_COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#14b8a6', '#ec4899', '#eab308'];
+
 function App() {
   const { lang, setLang, t } = useI18n();
 
@@ -262,9 +264,8 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<string | null>(null);
   const [roundtableTopic, setRoundtableTopic] = useState("");
-  const [roundtableRoles, setRoundtableRoles] = useState<string[]>([]);
-  const [roundtableNewRole, setRoundtableNewRole] = useState("");
-  const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string }[]>([]);
+  const [roundtableRoles, setRoundtableRoles] = useState<{ name: string; trait: string }[]>([]);
+  const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string; color: string }[]>([]);
   const [roundtableRunning, setRoundtableRunning] = useState(false);
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
@@ -303,7 +304,11 @@ function App() {
     const unlistenSpeaker = listen<{ round: number; role: string; status: string; content?: string }>("roundtable-speaker", event => {
       const { round, role, status, content } = event.payload;
       if (status === "done" && content) {
-        setRoundtableSpeakers(prev => [...prev, { round, role, content }]);
+        setRoundtableSpeakers(prev => {
+          const existingRoles = [...new Set(prev.map(s => s.role))];
+          const colorIndex = existingRoles.includes(role) ? existingRoles.indexOf(role) : existingRoles.length;
+          return [...prev, { round, role, content, color: ROLE_COLORS[colorIndex % ROLE_COLORS.length] }];
+        });
       }
     });
     const unlistenDone = listen<{ result: string }>("roundtable-done", event => {
@@ -1133,35 +1138,40 @@ function App() {
               />
               <div className="roundtable-roles">
                 <div className="roundtable-roles-label">{t("roundtableRoles")}</div>
-                <div className="roundtable-roles-tags">
+                <div className="roundtable-role-list">
                   {roundtableRoles.map((role, i) => (
-                    <span key={i} className="role-tag">
-                      {role}
-                      {!roundtableRunning && <button className="role-tag-remove" onClick={() => setRoundtableRoles(prev => prev.filter((_, j) => j !== i))}>x</button>}
-                    </span>
+                    <div key={i} className="roundtable-role-card" style={{ borderLeftColor: ROLE_COLORS[i % ROLE_COLORS.length] }}>
+                      <div className="roundtable-role-card-header">
+                        <div className="roundtable-role-avatar-sm" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>
+                          {role.name[0]}
+                        </div>
+                        {!roundtableRunning && (
+                          <button className="role-tag-remove" onClick={() => setRoundtableRoles(prev => prev.filter((_, j) => j !== i))}>x</button>
+                        )}
+                      </div>
+                      <input
+                        className="roundtable-role-name-input"
+                        type="text"
+                        placeholder={t("roundtableRoleName")}
+                        value={role.name}
+                        onChange={e => setRoundtableRoles(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                        disabled={roundtableRunning}
+                      />
+                      <input
+                        className="roundtable-role-trait-input"
+                        type="text"
+                        placeholder={t("roundtableRoleTrait")}
+                        value={role.trait}
+                        onChange={e => setRoundtableRoles(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
+                        disabled={roundtableRunning}
+                      />
+                    </div>
                   ))}
                 </div>
                 {!roundtableRunning && (
-                  <div className="roundtable-role-add">
-                    <input
-                      type="text"
-                      placeholder={t("roundtableAddRole")}
-                      value={roundtableNewRole}
-                      onChange={e => setRoundtableNewRole(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && roundtableNewRole.trim()) {
-                          setRoundtableRoles(prev => [...prev, roundtableNewRole.trim()]);
-                          setRoundtableNewRole("");
-                        }
-                      }}
-                    />
-                    <button onClick={() => {
-                      if (roundtableNewRole.trim()) {
-                        setRoundtableRoles(prev => [...prev, roundtableNewRole.trim()]);
-                        setRoundtableNewRole("");
-                      }
-                    }}>+</button>
-                  </div>
+                  <button className="roundtable-add-role-btn" onClick={() => setRoundtableRoles(prev => [...prev, { name: "", trait: "" }])}>
+                    + {t("roundtableAddRole")}
+                  </button>
                 )}
               </div>
               <button
@@ -1171,9 +1181,13 @@ function App() {
                   setRoundtableRunning(true);
                   setRoundtableSpeakers([]);
                   setRoundtableResult(null);
+                  const roleNames = roundtableRoles.filter(r => r.name.trim()).map(r => {
+                    const trait = r.trait.trim();
+                    return trait ? `${r.name.trim()}（${trait}）` : r.name.trim();
+                  });
                   await invoke("start_roundtable", {
                     topic: roundtableTopic.trim(),
-                    roles: roundtableRoles.length > 0 ? roundtableRoles : null,
+                    roles: roleNames.length > 0 ? roleNames : null,
                   });
                 }}
               >
@@ -1188,9 +1202,9 @@ function App() {
                 </div>
               )}
               {roundtableSpeakers.map((speaker, i) => (
-                <div key={i} className="roundtable-speaker-card">
+                <div key={i} className="roundtable-speaker-card" style={{ borderLeftColor: speaker.color }}>
                   <div className="roundtable-speaker-header">
-                    <div className="roundtable-speaker-avatar">{speaker.role[0]}</div>
+                    <div className="roundtable-speaker-avatar" style={{ background: speaker.color }}>{speaker.role[0]}</div>
                     <span className="roundtable-speaker-name">{speaker.role}</span>
                     <span className="roundtable-speaker-round">R{speaker.round}</span>
                   </div>

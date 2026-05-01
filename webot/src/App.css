@@ -1463,23 +1463,40 @@ textarea::placeholder {
   margin-bottom: 8px;
 }
 
-.roundtable-roles-tags {
+.roundtable-role-list {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 8px;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
-.role-tag {
-  display: inline-flex;
+.roundtable-role-card {
+  border: 1px solid #e5e5e5;
+  border-left: 3px solid #ccc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roundtable-role-card-header {
+  display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  background: #f0f0f0;
+  justify-content: space-between;
+}
+
+.roundtable-role-avatar-sm {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 12px;
-  font-weight: 500;
-  color: #444;
+  font-weight: 700;
 }
 
 .role-tag-remove {
@@ -1496,37 +1513,50 @@ textarea::placeholder {
   color: #e55;
 }
 
-.roundtable-role-add {
-  display: flex;
-  gap: 6px;
-}
-
-.roundtable-role-add input {
-  flex: 1;
+.roundtable-role-name-input {
+  width: 100%;
   padding: 6px 10px;
   border: 1px solid #e5e5e5;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   outline: none;
 }
 
-.roundtable-role-add input:focus {
+.roundtable-role-name-input:focus {
   border-color: #f97316;
 }
 
-.roundtable-role-add button {
-  width: 30px;
-  height: 30px;
+.roundtable-role-trait-input {
+  width: 100%;
+  padding: 5px 10px;
+  border: 1px solid #e5e5e5;
   border-radius: 8px;
-  border: none;
-  background: #f0f0f0;
-  font-size: 16px;
-  cursor: pointer;
-  color: #555;
+  font-size: 12px;
+  color: #666;
+  outline: none;
 }
 
-.roundtable-role-add button:hover {
-  background: #e5e5e5;
+.roundtable-role-trait-input:focus {
+  border-color: #f97316;
+}
+
+.roundtable-add-role-btn {
+  width: 100%;
+  padding: 8px;
+  border: 1px dashed #ddd;
+  border-radius: 10px;
+  background: none;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.roundtable-add-role-btn:hover {
+  border-color: #f97316;
+  color: #f97316;
+  background: #fff7ed;
 }
 
 .roundtable-start-btn {
@@ -1578,6 +1608,7 @@ textarea::placeholder {
 
 .roundtable-speaker-card {
   border: 1px solid #e5e5e5;
+  border-left: 3px solid #ccc;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -1924,9 +1955,11 @@ textarea::placeholder {
   .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
   .roundtable-topic-input:focus { border-color: #f97316; }
   .roundtable-roles-label { color: #999; }
-  .role-tag { background: #2a2a2a; color: #ccc; }
-  .roundtable-role-add input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-role-add button { background: #2a2a2a; color: #bbb; }
+  .roundtable-role-card { border-color: #333; }
+  .roundtable-role-name-input { background: #222; border-color: #333; color: #e5e5e5; }
+  .roundtable-role-trait-input { background: #222; border-color: #333; color: #aaa; }
+  .roundtable-add-role-btn { border-color: #444; color: #777; }
+  .roundtable-add-role-btn:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
   .roundtable-empty p { color: #666; }
   .roundtable-speaker-card { border-color: #333; }
   .roundtable-speaker-name { color: #e5e5e5; }
