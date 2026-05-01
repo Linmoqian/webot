@@ -36,3 +36,9 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Claude Code
+CLAUDE.md
+AGENTS.md
+圆桌讨论_*
+docs/
