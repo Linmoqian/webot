@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -147,9 +147,25 @@ function renderMessageContent(msg: Message, mediaDir: string) {
   return renderMarkdown(content, mediaDir);
 }
 
-const mockPlugins = [
-  { id: "weather", nameKey: "pluginWeatherName", descKey: "pluginWeatherDesc", icon: Cloud, author: "Webot Team", version: "1.0.0" },
-];
+interface PluginManifest {
+  id: string;
+  name: { zh: string; en: string };
+  description: { zh: string; en: string };
+  version: string;
+  author: string;
+  icon: string;
+  type: "builtin" | "http";
+  tool: Record<string, unknown>;
+  endpoint: string | null;
+}
+
+const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+  cloud: Cloud,
+  search: Search,
+  code: Code,
+  languages: Languages,
+  newspaper: Newspaper,
+};
 
 function applyTheme(theme: Theme) {
   if (theme === "system") {
@@ -183,14 +199,10 @@ function App() {
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
-  const [installedPlugins, setInstalledPlugins] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem("webot-installed-plugins");
-      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [marketplacePlugins, setMarketplacePlugins] = useState<PluginManifest[]>([]);
+  const [marketplaceLoading, setMarketplaceLoading] = useState(false);
+  const [marketplaceError, setMarketplaceError] = useState(false);
+  const [installedPlugins, setInstalledPlugins] = useState<PluginManifest[]>([]);
   const [marketplaceSearch, setMarketplaceSearch] = useState("");
 
   const [theme, setThemeState] = useState<Theme>(
@@ -208,13 +220,6 @@ function App() {
       return () => mq.removeEventListener("change", handler);
     }
   }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem(
-      "webot-installed-plugins",
-      JSON.stringify(Array.from(installedPlugins))
-    );
-  }, [installedPlugins]);
 
   useEffect(() => {
     invoke<{ wechat: { media_dir: string | null } }>("get_settings")
@@ -324,6 +329,39 @@ function App() {
     setQrData("");
     qrIdRef.current = "";
   }, [stopQrPoll]);
+
+  const loadInstalledPlugins = useCallback(async () => {
+    try {
+      const plugins = await invoke<PluginManifest[]>("get_installed_plugins");
+      setInstalledPlugins(plugins);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadInstalledPlugins(); }, [loadInstalledPlugins]);
+
+  const openMarketplace = useCallback(async () => {
+    setShowMarketplace(true);
+    setMarketplaceLoading(true);
+    setMarketplaceError(false);
+    try {
+      const plugins = await invoke<PluginManifest[]>("fetch_marketplace");
+      setMarketplacePlugins(plugins);
+    } catch {
+      setMarketplacePlugins([]);
+      setMarketplaceError(true);
+    }
+    setMarketplaceLoading(false);
+  }, []);
+
+  const handleInstall = useCallback(async (plugin: PluginManifest) => {
+    await invoke("install_plugin", { plugin });
+    await loadInstalledPlugins();
+  }, [loadInstalledPlugins]);
+
+  const handleUninstall = useCallback(async (pluginId: string) => {
+    await invoke("uninstall_plugin", { pluginId });
+    await loadInstalledPlugins();
+  }, [loadInstalledPlugins]);
 
   const openSettingsModal = useCallback(() => {
     invoke<{
@@ -447,7 +485,7 @@ function App() {
         unlistenError();
       };
 
-      const toolIds = installedPlugins.size > 0 ? Array.from(installedPlugins) : undefined;
+      const toolIds = installedPlugins.length > 0 ? installedPlugins.map(p => p.id) : undefined;
       await invoke("start_chat", { message: userMessage, toolIds });
     } catch {
       setMessages(prev => {
@@ -491,7 +529,7 @@ function App() {
           <button className="qr-header-btn" onClick={openQrModal} title={t("tooltipWechatLogin")}>
             <QrCode size={20} />
           </button>
-          <button className="settings-header-btn" onClick={() => setShowMarketplace(true)} title={t("marketplaceTitle")}>
+          <button className="settings-header-btn" onClick={openMarketplace} title={t("marketplaceTitle")}>
             <Store size={20} />
           </button>
           <button className="settings-header-btn" onClick={openSettingsModal} title={t("tooltipSettings")}>
@@ -780,34 +818,50 @@ function App() {
               value={marketplaceSearch}
               onChange={e => setMarketplaceSearch(e.target.value)}
             />
-            <div className="marketplace-grid">
-              {mockPlugins
-                .filter(p => t(p.nameKey).toLowerCase().includes(marketplaceSearch.toLowerCase()) || t(p.descKey).toLowerCase().includes(marketplaceSearch.toLowerCase()))
-                .map(plugin => {
-                  const IconComp = plugin.icon;
-                  const installed = installedPlugins.has(plugin.id);
-                  return (
-                    <div key={plugin.id} className="marketplace-card">
-                      <div className="marketplace-card-icon">
-                        <IconComp size={22} />
-                      </div>
-                      <div className="marketplace-card-info">
-                        <div className="marketplace-card-name">{t(plugin.nameKey)}</div>
-                        <div className="marketplace-card-desc">{t(plugin.descKey)}</div>
-                      </div>
-                      {installed ? (
-                        <button className="marketplace-installed-badge" onClick={() => setInstalledPlugins(prev => { const next = new Set(prev); next.delete(plugin.id); return next; })}>
-                          {t("marketplaceInstalled")}
-                        </button>
-                      ) : (
-                        <button className="marketplace-install-btn" onClick={() => setInstalledPlugins(prev => new Set(prev).add(plugin.id))}>
-                          {t("marketplaceInstall")}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-            </div>
+            {marketplaceLoading ? (
+              <div className="marketplace-loading">
+                <Loader2 size={28} className="spinner" />
+                <span>{t("marketplaceLoading")}</span>
+              </div>
+            ) : marketplaceError ? (
+              <div className="marketplace-error">{t("marketplaceError")}</div>
+            ) : (
+              <div className="marketplace-grid">
+                {marketplacePlugins.length === 0 ? (
+                  <div className="marketplace-error">{t("marketplaceEmpty")}</div>
+                ) : (
+                  marketplacePlugins
+                    .filter(p =>
+                      p.name[lang].toLowerCase().includes(marketplaceSearch.toLowerCase()) ||
+                      p.description[lang].toLowerCase().includes(marketplaceSearch.toLowerCase())
+                    )
+                    .map(plugin => {
+                      const IconComp = ICON_MAP[plugin.icon] || Sparkles;
+                      const installed = installedPlugins.some(p => p.id === plugin.id);
+                      return (
+                        <div key={plugin.id} className="marketplace-card">
+                          <div className="marketplace-card-icon">
+                            <IconComp size={22} />
+                          </div>
+                          <div className="marketplace-card-info">
+                            <div className="marketplace-card-name">{plugin.name[lang]}</div>
+                            <div className="marketplace-card-desc">{plugin.description[lang]}</div>
+                          </div>
+                          {installed ? (
+                            <button className="marketplace-installed-badge" onClick={() => handleUninstall(plugin.id)}>
+                              {t("marketplaceUninstall")}
+                            </button>
+                          ) : (
+                            <button className="marketplace-install-btn" onClick={() => handleInstall(plugin)}>
+                              {t("marketplaceInstall")}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

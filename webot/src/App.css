@@ -1078,6 +1078,22 @@ textarea::placeholder {
   color: #666;
 }
 
+.marketplace-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 0;
+  color: #888;
+}
+
+.marketplace-error {
+  text-align: center;
+  padding: 24px 0;
+  color: #999;
+  font-size: 13px;
+}
+
 /* Dark mode - manual toggle via data-theme attribute */
 [data-theme="dark"] {
   color: #e5e5e5;
