@@ -1397,6 +1397,247 @@ textarea::placeholder {
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Roundtable page */
+.roundtable-page {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.2s ease;
+}
+
+.roundtable-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.roundtable-page-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.roundtable-page-body {
+  flex: 1;
+  display: flex;
+  gap: 0;
+  overflow: hidden;
+}
+
+.roundtable-config {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 24px;
+  border-right: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roundtable-topic-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.roundtable-topic-input:focus {
+  border-color: #f97316;
+}
+
+.roundtable-roles-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.roundtable-roles-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.role-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #f0f0f0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #444;
+}
+
+.role-tag-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+}
+
+.role-tag-remove:hover {
+  color: #e55;
+}
+
+.roundtable-role-add {
+  display: flex;
+  gap: 6px;
+}
+
+.roundtable-role-add input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  font-size: 12px;
+  outline: none;
+}
+
+.roundtable-role-add input:focus {
+  border-color: #f97316;
+}
+
+.roundtable-role-add button {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: none;
+  background: #f0f0f0;
+  font-size: 16px;
+  cursor: pointer;
+  color: #555;
+}
+
+.roundtable-role-add button:hover {
+  background: #e5e5e5;
+}
+
+.roundtable-start-btn {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  background: #f97316;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.roundtable-start-btn:hover:not(:disabled) {
+  background: #ea580c;
+}
+
+.roundtable-start-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.roundtable-discussion {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.roundtable-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #ccc;
+  gap: 12px;
+}
+
+.roundtable-empty p {
+  font-size: 14px;
+  color: #999;
+}
+
+.roundtable-speaker-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+}
+
+.roundtable-speaker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.roundtable-speaker-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f97316;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.roundtable-speaker-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.roundtable-speaker-round {
+  font-size: 11px;
+  color: #999;
+  margin-left: auto;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.roundtable-speaker-content {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+}
+
+.roundtable-summary {
+  margin-top: 20px;
+  padding: 20px;
+  border: 2px solid #f97316;
+  border-radius: 12px;
+  background: #fff7ed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Dark mode - manual toggle via data-theme attribute */
 [data-theme="dark"] {
   color: #e5e5e5;
@@ -1605,5 +1846,22 @@ textarea::placeholder {
   .sidebar-history { border-color: #2a2a2a; }
   .sidebar-history-title { color: #666; }
   .sidebar-history-tool { color: #d4d4d4; }
+
+  .roundtable-page { background: #1a1a1a; }
+  .roundtable-page-header { border-color: #2a2a2a; }
+  .roundtable-page-header h3 { color: #e5e5e5; }
+  .roundtable-config { border-color: #2a2a2a; }
+  .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
+  .roundtable-topic-input:focus { border-color: #f97316; }
+  .roundtable-roles-label { color: #999; }
+  .role-tag { background: #2a2a2a; color: #ccc; }
+  .roundtable-role-add input { background: #222; border-color: #333; color: #e5e5e5; }
+  .roundtable-role-add button { background: #2a2a2a; color: #bbb; }
+  .roundtable-empty p { color: #666; }
+  .roundtable-speaker-card { border-color: #333; }
+  .roundtable-speaker-name { color: #e5e5e5; }
+  .roundtable-speaker-round { background: #2a2a2a; color: #777; }
+  .roundtable-speaker-content { color: #ccc; }
+  .roundtable-summary { background: #2a1f0f; border-color: #f97316; }
 }
 

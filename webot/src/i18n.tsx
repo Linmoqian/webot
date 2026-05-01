@@ -70,6 +70,12 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebarNoPlugins: "暂无已安装的插件",
     sidebarActive: "已启用",
     sidebarHistory: "工具调用历史",
+    roundtableTitle: "圆桌会议",
+    roundtableTopicPlaceholder: "输入讨论主题...",
+    roundtableRoles: "参与角色（留空则自动分配）",
+    roundtableAddRole: "添加角色，回车确认",
+    roundtableStart: "开始讨论",
+    roundtableEmpty: "输入主题，邀请专家开始讨论",
   },
   en: {
     heroTitle: "What can I help you with today?",
@@ -137,6 +143,12 @@ const translations: Record<Lang, Record<string, string>> = {
     sidebarNoPlugins: "No plugins installed",
     sidebarActive: "Active",
     sidebarHistory: "Tool Call History",
+    roundtableTitle: "Roundtable Meeting",
+    roundtableTopicPlaceholder: "Enter discussion topic...",
+    roundtableRoles: "Participants (auto-assigned if empty)",
+    roundtableAddRole: "Add role, press Enter",
+    roundtableStart: "Start Discussion",
+    roundtableEmpty: "Enter a topic and invite experts to discuss",
   },
 };
 

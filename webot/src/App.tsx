@@ -220,7 +220,7 @@ interface PluginManifest {
   type: "builtin" | "http";
   tool: Record<string, unknown>;
   endpoint: string | null;
-  slots?: { tool_result?: { renderer: string } };
+  slots?: { tool_result?: { renderer: string }; page?: { icon: string; label: { zh: string; en: string } } };
   lab?: boolean;
 }
 
@@ -260,6 +260,13 @@ function App() {
   const mediaDirRef = useRef<string>("");
   const [wechatConnected, setWechatConnected] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activePage, setActivePage] = useState<string | null>(null);
+  const [roundtableTopic, setRoundtableTopic] = useState("");
+  const [roundtableRoles, setRoundtableRoles] = useState<string[]>([]);
+  const [roundtableNewRole, setRoundtableNewRole] = useState("");
+  const [roundtableSpeakers, setRoundtableSpeakers] = useState<{ round: number; role: string; content: string }[]>([]);
+  const [roundtableRunning, setRoundtableRunning] = useState(false);
+  const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
   const [showWechatLog, setShowWechatLog] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -289,6 +296,20 @@ function App() {
       return () => mq.removeEventListener("change", handler);
     }
   }, [theme]);
+
+  useEffect(() => {
+    const unlistenSpeaker = listen<{ round: number; role: string; status: string; content?: string }>("roundtable-speaker", event => {
+      const { round, role, status, content } = event.payload;
+      if (status === "done" && content) {
+        setRoundtableSpeakers(prev => [...prev, { round, role, content }]);
+      }
+    });
+    const unlistenDone = listen<{ result: string }>("roundtable-done", event => {
+      setRoundtableRunning(false);
+      setRoundtableResult(event.payload.result);
+    });
+    return () => { unlistenSpeaker.then(fn => fn()); unlistenDone.then(fn => fn()); };
+  }, []);
 
   useEffect(() => {
     invoke<{ wechat: { media_dir: string | null } }>("get_settings")
@@ -641,6 +662,21 @@ function App() {
           <button className={`settings-header-btn ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(!sidebarOpen)} title={t("sidebarTitle")}>
             <LayoutDashboard size={20} />
           </button>
+          {installedPlugins
+            .filter(p => p.slots?.page)
+            .map(plugin => {
+              const PageIcon = ICON_MAP[plugin.slots!.page!.icon] || Sparkles;
+              return (
+                <button
+                  key={plugin.id}
+                  className={`settings-header-btn ${activePage === plugin.id ? "active" : ""}`}
+                  onClick={() => setActivePage(activePage === plugin.id ? null : plugin.id)}
+                  title={plugin.slots!.page!.label[lang]}
+                >
+                  <PageIcon size={20} />
+                </button>
+              );
+            })}
           <button className="settings-header-btn" onClick={openSettingsModal} title={t("tooltipSettings")}>
             <Settings size={20} />
           </button>
@@ -1069,6 +1105,100 @@ function App() {
             }
           </div>
         </aside>
+      )}
+
+      {activePage === "roundtable" && (
+        <div className="roundtable-page">
+          <div className="roundtable-page-header">
+            <h3>{t("roundtableTitle")}</h3>
+            <button className="sidebar-close-btn" onClick={() => { setActivePage(null); setRoundtableRunning(false); setRoundtableSpeakers([]); setRoundtableResult(null); }}>
+              <X size={16} />
+            </button>
+          </div>
+          <div className="roundtable-page-body">
+            <div className="roundtable-config">
+              <input
+                className="roundtable-topic-input"
+                type="text"
+                placeholder={t("roundtableTopicPlaceholder")}
+                value={roundtableTopic}
+                onChange={e => setRoundtableTopic(e.target.value)}
+                disabled={roundtableRunning}
+              />
+              <div className="roundtable-roles">
+                <div className="roundtable-roles-label">{t("roundtableRoles")}</div>
+                <div className="roundtable-roles-tags">
+                  {roundtableRoles.map((role, i) => (
+                    <span key={i} className="role-tag">
+                      {role}
+                      {!roundtableRunning && <button className="role-tag-remove" onClick={() => setRoundtableRoles(prev => prev.filter((_, j) => j !== i))}>x</button>}
+                    </span>
+                  ))}
+                </div>
+                {!roundtableRunning && (
+                  <div className="roundtable-role-add">
+                    <input
+                      type="text"
+                      placeholder={t("roundtableAddRole")}
+                      value={roundtableNewRole}
+                      onChange={e => setRoundtableNewRole(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && roundtableNewRole.trim()) {
+                          setRoundtableRoles(prev => [...prev, roundtableNewRole.trim()]);
+                          setRoundtableNewRole("");
+                        }
+                      }}
+                    />
+                    <button onClick={() => {
+                      if (roundtableNewRole.trim()) {
+                        setRoundtableRoles(prev => [...prev, roundtableNewRole.trim()]);
+                        setRoundtableNewRole("");
+                      }
+                    }}>+</button>
+                  </div>
+                )}
+              </div>
+              <button
+                className="roundtable-start-btn"
+                disabled={roundtableRunning || !roundtableTopic.trim()}
+                onClick={async () => {
+                  setRoundtableRunning(true);
+                  setRoundtableSpeakers([]);
+                  setRoundtableResult(null);
+                  await invoke("start_roundtable", {
+                    topic: roundtableTopic.trim(),
+                    roles: roundtableRoles.length > 0 ? roundtableRoles : null,
+                  });
+                }}
+              >
+                {roundtableRunning ? <Loader2 size={16} className="spinner" /> : t("roundtableStart")}
+              </button>
+            </div>
+            <div className="roundtable-discussion">
+              {roundtableSpeakers.length === 0 && !roundtableResult && (
+                <div className="roundtable-empty">
+                  <Users size={48} />
+                  <p>{t("roundtableEmpty")}</p>
+                </div>
+              )}
+              {roundtableSpeakers.map((speaker, i) => (
+                <div key={i} className="roundtable-speaker-card">
+                  <div className="roundtable-speaker-header">
+                    <div className="roundtable-speaker-avatar">{speaker.role[0]}</div>
+                    <span className="roundtable-speaker-name">{speaker.role}</span>
+                    <span className="roundtable-speaker-round">R{speaker.round}</span>
+                  </div>
+                  <div className="roundtable-speaker-content">{speaker.content}</div>
+                </div>
+              ))}
+              {roundtableResult && (
+                <div className="roundtable-summary">
+                  {renderMarkdown(roundtableResult)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -112,7 +112,8 @@
       },
       "endpoint": null,
       "slots": {
-        "tool_result": { "renderer": "markdown" }
+        "tool_result": { "renderer": "markdown" },
+        "page": { "icon": "users", "label": { "zh": "圆桌会议", "en": "Roundtable" } }
       }
     }
   ]
