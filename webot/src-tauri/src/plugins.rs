@@ -11,6 +11,17 @@ pub struct LocalizedText {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SlotConfig {
+    pub renderer: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PluginSlots {
+    #[serde(default)]
+    pub tool_result: Option<SlotConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {
     pub id: String,
     pub name: LocalizedText,
@@ -22,6 +33,19 @@ pub struct PluginManifest {
     pub plugin_type: String,
     pub tool: Value,
     pub endpoint: Option<String>,
+    #[serde(default)]
+    pub slots: Option<PluginSlots>,
+}
+
+pub fn get_tool_renderer(installed: &[PluginManifest], tool_name: &str) -> Option<String> {
+    installed
+        .iter()
+        .find(|p| {
+            p.tool["function"]["name"].as_str() == Some(tool_name) || p.id == tool_name
+        })
+        .and_then(|p| p.slots.as_ref())
+        .and_then(|s| s.tool_result.as_ref())
+        .map(|c| c.renderer.clone())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

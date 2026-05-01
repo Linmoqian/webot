@@ -174,7 +174,18 @@ pub async fn chat_with_tools(
                     serde_json::json!({ "name": name, "arguments": args }),
                 );
 
-                let result = crate::tools::execute_tool_async(name, args, installed_plugins).await;
+                let result = crate::tools::execute_tool_async(name, args.clone(), installed_plugins).await;
+
+                let renderer = crate::plugins::get_tool_renderer(installed_plugins, name)
+                    .unwrap_or_else(|| "text".to_string());
+                let _ = app.emit(
+                    "chat-tool-result",
+                    serde_json::json!({
+                        "name": name,
+                        "result": &result,
+                        "renderer": renderer,
+                    }),
+                );
 
                 all_messages.push(serde_json::json!({
                     "role": "tool",
