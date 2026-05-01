@@ -4,6 +4,17 @@
   line-height: 1.6;
   color: #1a1a1a;
   background-color: #f9fafb;
+  scrollbar-width: none;
+}
+
+:root::-webkit-scrollbar { display: none; }
+
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 html,
