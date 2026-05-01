@@ -2,6 +2,7 @@ mod commands;
 mod config;
 mod llm;
 mod media;
+mod tools;
 
 use commands::AppState;
 
