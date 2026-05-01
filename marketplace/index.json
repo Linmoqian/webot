@@ -93,7 +93,7 @@
       "version": "0.1.0",
       "author": "Webot Team",
       "icon": "users",
-      "type": "http",
+      "type": "builtin",
       "lab": true,
       "tool": {
         "type": "function",

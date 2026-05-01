@@ -519,6 +519,29 @@ function App() {
         });
       });
 
+      const unlistenRoundtable = await listen<{ round: number; role: string; status: string; content?: string }>("roundtable-speaker", (event) => {
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          const payload = event.payload;
+          if (payload.status === "speaking") {
+            updated[updated.length - 1] = {
+              ...last,
+              content: last.content + `\n> **${payload.role}** 正在发言... (第${payload.round}轮)\n`,
+            };
+          } else if (payload.status === "done" && payload.content) {
+            updated[updated.length - 1] = {
+              ...last,
+              content: last.content.replace(
+                `\n> **${payload.role}** 正在发言... (第${payload.round}轮)\n`,
+                `\n**${payload.role}**：${payload.content}\n`
+              ),
+            };
+          }
+          return updated;
+        });
+      });
+
       const unlistenText = await listen<{ content: string }>("chat-text", (event) => {
         setMessages(prev => {
           const updated = [...prev];
@@ -562,6 +585,7 @@ function App() {
         unlistenThinking();
         unlistenToolCall();
         unlistenToolResult();
+        unlistenRoundtable();
         unlistenText();
         unlistenDone();
         unlistenError();
