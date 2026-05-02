@@ -1268,9 +1268,7 @@ function App() {
                 ];
                 const dragFlatIdx = dragGhost ? allRoles.findIndex(r => r.source === dragGhost.source && r.srcIdx === dragGhost.index) : -1;
                 const visibleRoles = dragFlatIdx >= 0 ? allRoles.filter((_, i) => i !== dragFlatIdx) : allRoles;
-                const gapIdx = dragFlatIdx >= 0 && dragOverIndex != null && dragOverIndex !== dragFlatIdx
-                  ? (dragOverIndex > dragFlatIdx ? dragOverIndex - 1 : dragOverIndex)
-                  : -1;
+                const gapIdx = dragFlatIdx >= 0 && dragOverIndex != null ? dragOverIndex : -1;
                 return (
                   <div className="roundtable-panel-body">
                     <div className="roundtable-role-rail" data-drop-zone="rail" ref={railRef}>
@@ -1308,12 +1306,13 @@ function App() {
                                 }
                                 if (roundtableDragRef.current) {
                                   setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
+                                  const ghostCenterX = ev.clientX;
                                   const cards = rail.querySelectorAll(".roundtable-role-card");
-                                  let overIdx: number | null = null;
+                                  let overIdx = cards.length;
                                   cards.forEach((card, ci) => {
                                     const cr = card.getBoundingClientRect();
-                                    if (ev.clientX >= cr.left && ev.clientX <= cr.right) {
-                                      overIdx = ev.clientX < cr.left + cr.width / 2 ? ci : ci + 1;
+                                    if (ghostCenterX < cr.left + cr.width / 2) {
+                                      if (overIdx > ci) overIdx = ci;
                                     }
                                   });
                                   setDragOverIndex(overIdx);
@@ -1339,8 +1338,7 @@ function App() {
                                     recordFlipPositions();
                                     const items = [...allRoles];
                                     const [moved] = items.splice(dragFlatIdx, 1);
-                                    const insertAt = dragOverIndex > dragFlatIdx ? dragOverIndex - 1 : dragOverIndex;
-                                    items.splice(insertAt, 0, moved);
+                                    items.splice(dragOverIndex, 0, moved);
                                     const newOnStage = items.filter(r => r.source === "onstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const newOff = items.filter(r => r.source === "backstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const allBackstage = [...roundtableBackstage.filter(r => !r.name.trim()), ...newOff];
