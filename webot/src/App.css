@@ -1539,157 +1539,102 @@ textarea::placeholder {
 
 /* Panel body */
 .roundtable-panel-body {
-  padding: 12px 20px;
   border-bottom: 1px solid #f0f0f0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   animation: fadeIn 0.15s ease;
 }
 
-.roundtable-panel-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.roundtable-panel-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #999;
-}
-
-/* On-stage chips */
-.roundtable-panel-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.roundtable-panel-chip {
+/* Horizontal role rail */
+.roundtable-role-rail {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 10px 20px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  min-height: 44px;
+  transition: background 0.15s;
+}
+
+.roundtable-role-rail::-webkit-scrollbar { height: 4px; }
+.roundtable-role-rail::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
+.roundtable-role-rail.drag-over { background: #fff7ed; }
+
+/* Role tags */
+.roundtable-role-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 10px;
   border-radius: 8px;
   border: 1px solid #e5e5e5;
-  border-left: 3px solid;
+  border-left: 3px solid #ccc;
+  flex-shrink: 0;
+  cursor: grab;
+  transition: box-shadow 0.15s, transform 0.15s;
 }
 
-.roundtable-panel-chip.onstage { background: #fafffe; }
+.roundtable-role-tag:active { cursor: grabbing; }
+.roundtable-role-tag:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
 
-.roundtable-panel-chip-avatar {
-  width: 22px;
-  height: 22px;
+.roundtable-role-tag.onstage { background: #fafffe; }
+
+.roundtable-role-tag.backstage { background: #fafafa; }
+
+.roundtable-role-tag-avatar {
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.roundtable-panel-chip-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
+.roundtable-role-tag-avatar.off { background: #bbb; }
 
-.roundtable-panel-chip-name {
+.roundtable-role-tag-name {
   font-size: 12px;
   font-weight: 600;
   color: #333;
+  white-space: nowrap;
 }
 
-.roundtable-panel-chip-action {
+.roundtable-role-tag-x {
   background: none;
   border: none;
   cursor: pointer;
-  color: #bbb;
-  font-size: 13px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  line-height: 1;
-}
-
-.roundtable-panel-chip-action:hover { color: #e55; background: #fef2f2; }
-
-/* Backstage role rows */
-.roundtable-panel-roles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.roundtable-panel-role-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.roundtable-panel-role-input {
-  padding: 5px 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 12px;
-  outline: none;
-  height: 28px;
-  box-sizing: border-box;
-  flex: 1;
-  transition: border-color 0.2s;
-}
-
-.roundtable-panel-role-input:focus { border-color: #f97316; }
-
-.roundtable-panel-role-input.trait {
-  flex: 1;
-  color: #666;
-}
-
-.roundtable-panel-role-up {
-  width: 26px;
-  height: 26px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: white;
-  color: #f97316;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.15s;
-}
-
-.roundtable-panel-role-up:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
-.roundtable-panel-role-up:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.roundtable-panel-role-del {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 6px;
-  background: none;
   color: #ccc;
-  font-size: 15px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  font-size: 13px;
+  padding: 0 2px;
+  line-height: 1;
+  border-radius: 3px;
 }
 
-.roundtable-panel-role-del:hover { color: #e55; background: #fef2f2; }
+.roundtable-role-tag-x:hover { color: #e55; background: #fef2f2; }
+
+.roundtable-role-tag-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  width: 80px;
+  padding: 0;
+}
 
 .roundtable-discussion {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  transition: background 0.15s;
+}
+
+.roundtable-discussion.stage-drop-active {
+  background: #f0fdf4;
+  box-shadow: inset 0 2px 8px rgba(34,197,94,0.1);
 }
 
 .roundtable-empty {
@@ -2046,17 +1991,18 @@ textarea::placeholder {
   .roundtable-panel-add { border-color: #444; color: #666; }
   .roundtable-panel-add:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
   .roundtable-panel-body { border-color: #2a2a2a; }
-  .roundtable-panel-label { color: #555; }
-  .roundtable-panel-chip { background: #222; border-color: #333; }
-  .roundtable-panel-chip.onstage { background: #1a2a1a; }
-  .roundtable-panel-chip-name { color: #e5e5e5; }
-  .roundtable-panel-chip-action { color: #555; }
-  .roundtable-panel-chip-action:hover { color: #f87171; background: #3a1a1a; }
-  .roundtable-panel-role-input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-panel-role-up { background: #222; border-color: #444; }
-  .roundtable-panel-role-up:hover:not(:disabled) { background: #f97316; border-color: #f97316; }
-  .roundtable-panel-role-del { color: #444; }
-  .roundtable-panel-role-del:hover { color: #f87171; background: #3a1a1a; }
+  .roundtable-role-rail { scrollbar-color: #444 transparent; }
+  .roundtable-role-rail::-webkit-scrollbar-thumb { background: #444; }
+  .roundtable-role-rail.drag-over { background: #2a1f0f; }
+  .roundtable-role-tag { border-color: #333; }
+  .roundtable-role-tag.onstage { background: #1a2a1a; }
+  .roundtable-role-tag.backstage { background: #222; }
+  .roundtable-role-tag-avatar.off { background: #444; }
+  .roundtable-role-tag-name { color: #e5e5e5; }
+  .roundtable-role-tag-x { color: #444; }
+  .roundtable-role-tag-x:hover { color: #f87171; background: #3a1a1a; }
+  .roundtable-role-tag-input { color: #e5e5e5; }
+  .roundtable-discussion.stage-drop-active { background: #0f2a0f; box-shadow: inset 0 2px 8px rgba(34,197,94,0.05); }
   .roundtable-empty p { color: #555; }
   .roundtable-speaker-card { border-color: #333; }
   .roundtable-speaker-name { color: #e5e5e5; }

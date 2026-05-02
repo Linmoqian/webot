@@ -1213,61 +1213,91 @@ function App() {
               </div>
               {roundtablePanelOpen && (
                 <div className="roundtable-panel-body">
-                  {roundtableOnStage.length > 0 && (
-                    <div className="roundtable-panel-section">
-                      <div className="roundtable-panel-label">{t("roundtableOnStage")}</div>
-                      <div className="roundtable-panel-chips">
-                        {roundtableOnStage.map((role, i) => (
-                          <div key={i} className="roundtable-panel-chip onstage" style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}>
-                            <div className="roundtable-panel-chip-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
-                            <span className="roundtable-panel-chip-name">{role.name}</span>
-                            {!roundtableRunning && (
-                              <button className="roundtable-panel-chip-action" onClick={() => {
-                                setRoundtableOnStage(prev => prev.filter((_, j) => j !== i));
-                                setRoundtableBackstage(prev => [...prev, role]);
-                              }}>↓</button>
-                            )}
-                          </div>
-                        ))}
+                  <div className="roundtable-role-rail"
+                    onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
+                    onDragLeave={e => { e.currentTarget.classList.remove("drag-over"); }}
+                    onDrop={e => {
+                      e.preventDefault();
+                      e.currentTarget.classList.remove("drag-over");
+                      const data = e.dataTransfer.getData("text/plain");
+                      if (!data) return;
+                      const [source, idxStr] = data.split(":");
+                      const idx = parseInt(idxStr, 10);
+                      if (source === "onstage" && !roundtableRunning) {
+                        const role = roundtableOnStage[idx];
+                        if (role) {
+                          setRoundtableOnStage(prev => prev.filter((_, j) => j !== idx));
+                          setRoundtableBackstage(prev => [...prev, role]);
+                        }
+                      }
+                    }}
+                  >
+                    {roundtableOnStage.map((role, i) => (
+                      <div
+                        key={"on-" + i}
+                        className="roundtable-role-tag onstage"
+                        style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
+                        draggable={!roundtableRunning}
+                        onDragStart={e => { e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                      >
+                        <div className="roundtable-role-tag-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
+                        <span className="roundtable-role-tag-name">{role.name}</span>
+                        {!roundtableRunning && (
+                          <button className="roundtable-role-tag-x" onClick={e => { e.stopPropagation(); setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableBackstage(prev => [...prev, role]); }}>×</button>
+                        )}
                       </div>
-                    </div>
-                  )}
-                  <div className="roundtable-panel-section">
-                    <div className="roundtable-panel-label">{t("roundtableBackstage")}</div>
-                    <div className="roundtable-panel-roles">
-                      {roundtableBackstage.map((role, i) => (
-                        <div key={i} className="roundtable-panel-role-row">
+                    ))}
+                    {roundtableBackstage.map((role, i) => (
+                      <div
+                        key={"off-" + i}
+                        className="roundtable-role-tag backstage"
+                        draggable={!roundtableRunning && !!role.name.trim()}
+                        onDragStart={e => { e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                      >
+                        {role.name.trim() ? (
+                          <>
+                            <div className="roundtable-role-tag-avatar off">{role.name[0]}</div>
+                            <span className="roundtable-role-tag-name">{role.name}</span>
+                            {!roundtableRunning && (
+                              <button className="roundtable-role-tag-x" onClick={e => { e.stopPropagation(); setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); }}>×</button>
+                            )}
+                          </>
+                        ) : (
                           <input
-                            className="roundtable-panel-role-input"
+                            className="roundtable-role-tag-input"
                             type="text"
                             placeholder={t("roundtableRoleName")}
                             value={role.name}
                             onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
                             disabled={roundtableRunning}
+                            autoFocus
+                            onKeyDown={e => { if (e.key === "Enter" && role.name.trim()) { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); } }}
                           />
-                          {!roundtableRunning && (
-                            <>
-                              <button
-                                className="roundtable-panel-role-up"
-                                disabled={!role.name.trim()}
-                                onClick={() => {
-                                  setRoundtableBackstage(prev => prev.filter((_, j) => j !== i));
-                                  setRoundtableOnStage(prev => [...prev, role]);
-                                }}
-                              >↑</button>
-                              <button
-                                className="roundtable-panel-role-del"
-                                onClick={() => setRoundtableBackstage(prev => prev.filter((_, j) => j !== i))}
-                              >×</button>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-              <div className="roundtable-discussion">
+              <div className="roundtable-discussion"
+                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("stage-drop-active"); }}
+                onDragLeave={e => { e.currentTarget.classList.remove("stage-drop-active"); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("stage-drop-active");
+                  const data = e.dataTransfer.getData("text/plain");
+                  if (!data || roundtableRunning) return;
+                  const [source, idxStr] = data.split(":");
+                  const idx = parseInt(idxStr, 10);
+                  if (source === "backstage") {
+                    const role = roundtableBackstage[idx];
+                    if (role) {
+                      setRoundtableBackstage(prev => prev.filter((_, j) => j !== idx));
+                      setRoundtableOnStage(prev => [...prev, role]);
+                    }
+                  }
+                }}
+              >
                 {roundtableSpeakers.length === 0 && !roundtableResult && (
                   <div className="roundtable-empty">
                     <Users size={48} />
