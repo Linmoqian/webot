@@ -1292,6 +1292,7 @@ function App() {
                             onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source, index: srcIdx }); }}
                             onPointerDown={e => {
                               if (roundtableRunning || flipped || e.button !== 0) return;
+                              e.preventDefault();
                               const el = e.currentTarget as HTMLElement;
                               const rect = el.getBoundingClientRect();
                               const rail = el.parentElement!;
@@ -1346,13 +1347,13 @@ function App() {
                                     setRoundtableBackstage(allBackstage);
                                     requestAnimationFrame(() => { requestAnimationFrame(() => { playFlipAnimation(); }); });
                                   }
-                                  setTimeout(() => { setDragGhost(null); setDragOverIndex(null); }, 0);
+                                  setDragGhost(null);
+                                  setDragOverIndex(null);
                                 }
                                 document.body.style.userSelect = "";
                                 document.body.style.webkitUserSelect = "";
                                 setTimeout(() => { roundtableDragRef.current = false; }, 0);
                               };
-                              el.setPointerCapture(e.pointerId);
                               document.addEventListener("pointermove", onMove);
                               document.addEventListener("pointerup", onUp);
                             }}
