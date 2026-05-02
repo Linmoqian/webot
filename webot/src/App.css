@@ -1571,9 +1571,7 @@ textarea::placeholder {
   border: 1px solid #e5e5e5;
   border-left: 3px solid #ccc;
   position: relative;
-  transition: transform 0.2s ease-out, opacity 0.15s, box-shadow 0.15s;
-  --shift: 0;
-  transform: translateX(calc(var(--shift) * 128px));
+  transition: box-shadow 0.15s;
 }
 
 .roundtable-role-card.backstage { background: #fafafa; }
@@ -1581,8 +1579,18 @@ textarea::placeholder {
 .roundtable-role-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
 .roundtable-role-card.dragging {
-  opacity: 0;
-  pointer-events: none;
+  visibility: hidden;
+}
+
+/* Insertion gap indicator */
+.roundtable-role-rail .drop-gap {
+  width: 0;
+  flex-shrink: 0;
+  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.roundtable-role-rail .drop-gap.active {
+  width: 128px;
 }
 
 .roundtable-role-card-inner {

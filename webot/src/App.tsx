@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -1267,30 +1267,29 @@ function App() {
                   ...roundtableBackstage.filter(r => r.name.trim()).map((r, i) => ({ ...r, source: "backstage" as const, srcIdx: i })),
                 ];
                 const dragFlatIdx = dragGhost ? allRoles.findIndex(r => r.source === dragGhost.source && r.srcIdx === dragGhost.index) : -1;
+                const visibleRoles = dragFlatIdx >= 0 ? allRoles.filter((_, i) => i !== dragFlatIdx) : allRoles;
+                const gapIdx = dragFlatIdx >= 0 && dragOverIndex != null && dragOverIndex !== dragFlatIdx
+                  ? (dragOverIndex > dragFlatIdx ? dragOverIndex - 1 : dragOverIndex)
+                  : -1;
                 return (
                   <div className="roundtable-panel-body">
                     <div className="roundtable-role-rail" data-drop-zone="rail" ref={railRef}>
-                      {allRoles.map((item, flatIdx) => {
+                      {visibleRoles.map((item, vi) => {
+                        const flatIdx = dragFlatIdx >= 0 && vi >= dragFlatIdx ? vi + 1 : vi;
                         const { source, srcIdx, name, trait } = item;
                         const key = name;
                         const flipped = roundtableFlipped === key;
-                        const isDragging = dragFlatIdx === flatIdx;
                         const isOnstage = source === "onstage";
-                        const colorIdx = isOnstage ? srcIdx : roundtableOnStage.length + srcIdx;
-                        let shift = 0;
-                        if (dragGhost && dragFlatIdx >= 0 && dragOverIndex !== null && flatIdx !== dragFlatIdx) {
-                          if (dragFlatIdx < dragOverIndex && flatIdx > dragFlatIdx && flatIdx <= dragOverIndex) shift = -1;
-                          if (dragFlatIdx > dragOverIndex && flatIdx >= dragOverIndex && flatIdx < dragFlatIdx) shift = 1;
+                        const els: React.ReactNode[] = [];
+                        if (vi === gapIdx) {
+                          els.push(<div key="__gap__" className="drop-gap active" />);
                         }
-                        return (
+                        els.push(
                           <div
                             key={key}
                             data-role-name={name}
-                            className={"roundtable-role-card" + (isOnstage ? "" : " backstage") + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
-                            style={{
-                              borderColor: isOnstage ? ROLE_COLORS[srcIdx % ROLE_COLORS.length] : "#ccc",
-                              "--shift": shift + "",
-                            } as React.CSSProperties}
+                            className={"roundtable-role-card" + (isOnstage ? "" : " backstage") + (flipped ? " flipped" : "")}
+                            style={{ borderColor: isOnstage ? ROLE_COLORS[srcIdx % ROLE_COLORS.length] : "#ccc" }}
                             onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
                             onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source, index: srcIdx }); }}
                             onPointerDown={e => {
@@ -1309,7 +1308,7 @@ function App() {
                                 }
                                 if (roundtableDragRef.current) {
                                   setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
-                                  const cards = rail.querySelectorAll(".roundtable-role-card:not(.dragging)");
+                                  const cards = rail.querySelectorAll(".roundtable-role-card");
                                   let overIdx: number | null = null;
                                   cards.forEach((card, ci) => {
                                     const cr = card.getBoundingClientRect();
@@ -1317,9 +1316,6 @@ function App() {
                                       overIdx = ev.clientX < cr.left + cr.width / 2 ? ci : ci + 1;
                                     }
                                   });
-                                  if (overIdx !== null && dragFlatIdx >= 0) {
-                                    if (overIdx > dragFlatIdx) overIdx--;
-                                  }
                                   setDragOverIndex(overIdx);
                                 }
                               };
@@ -1339,11 +1335,12 @@ function App() {
                                       setRoundtableBackstage(prev => [...prev, { name, trait }]);
                                     }
                                     requestAnimationFrame(() => { requestAnimationFrame(() => { playFlipAnimation(); }); });
-                                  } else if (dragOverIndex !== null && dragFlatIdx >= 0 && dragOverIndex !== dragFlatIdx) {
+                                  } else if (dragOverIndex !== null) {
                                     recordFlipPositions();
                                     const items = [...allRoles];
                                     const [moved] = items.splice(dragFlatIdx, 1);
-                                    items.splice(dragOverIndex, 0, moved);
+                                    const insertAt = dragOverIndex > dragFlatIdx ? dragOverIndex - 1 : dragOverIndex;
+                                    items.splice(insertAt, 0, moved);
                                     const newOnStage = items.filter(r => r.source === "onstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const newOff = items.filter(r => r.source === "backstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const allBackstage = [...roundtableBackstage.filter(r => !r.name.trim()), ...newOff];
@@ -1373,6 +1370,10 @@ function App() {
                             </div>
                           </div>
                         );
+                        if (vi === allRoles.length - 2 && gapIdx === allRoles.length - 1) {
+                          els.push(<div key="__gap-end__" className="drop-gap active" />);
+                        }
+                        return <Fragment key={key + "-frag"}>{els}</Fragment>;
                       })}
                     </div>
                   </div>
