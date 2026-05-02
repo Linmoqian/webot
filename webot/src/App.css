@@ -1605,11 +1605,6 @@ textarea::placeholder {
   color: #333;
 }
 
-.roundtable-panel-chip-trait {
-  font-size: 10px;
-  color: #888;
-}
-
 .roundtable-panel-chip-action {
   background: none;
   border: none;
@@ -1644,7 +1639,7 @@ textarea::placeholder {
   outline: none;
   height: 28px;
   box-sizing: border-box;
-  width: 120px;
+  flex: 1;
   transition: border-color 0.2s;
 }
 
@@ -2055,7 +2050,6 @@ textarea::placeholder {
   .roundtable-panel-chip { background: #222; border-color: #333; }
   .roundtable-panel-chip.onstage { background: #1a2a1a; }
   .roundtable-panel-chip-name { color: #e5e5e5; }
-  .roundtable-panel-chip-trait { color: #666; }
   .roundtable-panel-chip-action { color: #555; }
   .roundtable-panel-chip-action:hover { color: #f87171; background: #3a1a1a; }
   .roundtable-panel-role-input { background: #222; border-color: #333; color: #e5e5e5; }

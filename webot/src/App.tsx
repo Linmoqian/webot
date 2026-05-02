@@ -1220,10 +1220,7 @@ function App() {
                         {roundtableOnStage.map((role, i) => (
                           <div key={i} className="roundtable-panel-chip onstage" style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}>
                             <div className="roundtable-panel-chip-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
-                            <div className="roundtable-panel-chip-info">
-                              <span className="roundtable-panel-chip-name">{role.name}</span>
-                              {role.trait && <span className="roundtable-panel-chip-trait">{role.trait}</span>}
-                            </div>
+                            <span className="roundtable-panel-chip-name">{role.name}</span>
                             {!roundtableRunning && (
                               <button className="roundtable-panel-chip-action" onClick={() => {
                                 setRoundtableOnStage(prev => prev.filter((_, j) => j !== i));
@@ -1246,14 +1243,6 @@ function App() {
                             placeholder={t("roundtableRoleName")}
                             value={role.name}
                             onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                            disabled={roundtableRunning}
-                          />
-                          <input
-                            className="roundtable-panel-role-input trait"
-                            type="text"
-                            placeholder={t("roundtableRoleTrait")}
-                            value={role.trait}
-                            onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
                             disabled={roundtableRunning}
                           />
                           {!roundtableRunning && (
