@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, type DragEvent } from "react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users, Trash2 } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -27,6 +27,19 @@ interface Message {
   isFinished?: boolean;
   showReasoning?: boolean;
   toolResults?: ToolResultEvent[];
+}
+
+type RoundtableRole = { name: string; trait: string };
+type RoundtableRoleSource = "onstage" | "backstage";
+type RoundtableDragPayload = { source: RoundtableRoleSource; index: number };
+type RoundtableDropZone = "table" | "trash" | null;
+
+declare global {
+  interface Window {
+    webotDebugBus?: {
+      emit: (type: string, payload?: unknown) => void;
+    };
+  }
 }
 
 const THEME_KEY = "webot-theme";
@@ -264,13 +277,13 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<string | null>(null);
   const [roundtableTopic, setRoundtableTopic] = useState("");
-  const [roundtableBackstage, setRoundtableBackstage] = useState<{ name: string; trait: string }[]>(() => {
+  const [roundtableBackstage, setRoundtableBackstage] = useState<RoundtableRole[]>(() => {
     try {
       const saved = localStorage.getItem("webot-roundtable-backstage");
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
-  const [roundtableOnStage, setRoundtableOnStage] = useState<{ name: string; trait: string }[]>(() => {
+  const [roundtableOnStage, setRoundtableOnStage] = useState<RoundtableRole[]>(() => {
     try {
       const saved = localStorage.getItem("webot-roundtable-onstage");
       return saved ? JSON.parse(saved) : [];
@@ -293,6 +306,8 @@ function App() {
   useEffect(() => { roundtableSpeakersRef.current = roundtableSpeakers; }, [roundtableSpeakers]);
   const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
+  const [roundtableFlippedRole, setRoundtableFlippedRole] = useState<string | null>(null);
+  const [roundtableDropZone, setRoundtableDropZone] = useState<RoundtableDropZone>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -312,6 +327,19 @@ function App() {
   const [theme, setThemeState] = useState<Theme>(
     () => (localStorage.getItem(THEME_KEY) as Theme) || "system"
   );
+
+  useEffect(() => {
+    window.webotDebugBus = {
+      emit: (type, payload) => {
+        window.dispatchEvent(new CustomEvent("webot-debug", { detail: { type, payload, at: Date.now() } }));
+      },
+    };
+    window.webotDebugBus.emit("app:ready", { page: activePage });
+
+    return () => {
+      delete window.webotDebugBus;
+    };
+  }, [activePage]);
 
   useEffect(() => {
     applyTheme(theme);
@@ -566,6 +594,57 @@ function App() {
       }).catch(() => setSettingsSaving(false));
     }).catch(() => setSettingsSaving(false));
   }, [settingsForm]);
+
+  const removeRoundtableRole = useCallback((source: RoundtableRoleSource, index: number) => {
+    if (source === "onstage") {
+      setRoundtableOnStage(prev => prev.filter((_, j) => j !== index));
+      return;
+    }
+    setRoundtableBackstage(prev => prev.filter((_, j) => j !== index));
+  }, []);
+
+  const moveRoundtableRoleToTable = useCallback((source: RoundtableRoleSource, index: number) => {
+    if (source === "onstage") return;
+    const role = roundtableBackstage[index];
+    if (!role?.name.trim()) return;
+    setRoundtableBackstage(prev => prev.filter((_, j) => j !== index));
+    setRoundtableOnStage(stage => [...stage, { name: role.name, trait: role.trait }]);
+  }, [roundtableBackstage]);
+
+  const handleRoundtableDragStart = (
+    event: DragEvent<HTMLElement>,
+    source: RoundtableRoleSource,
+    index: number,
+  ) => {
+    event.dataTransfer.setData("application/json", JSON.stringify({ source, index }));
+    event.dataTransfer.effectAllowed = "move";
+  };
+
+  const readRoundtableDragPayload = (event: DragEvent<HTMLElement>): RoundtableDragPayload | null => {
+    try {
+      const rawPayload = event.dataTransfer.getData("application/json");
+      const payload = JSON.parse(rawPayload) as RoundtableDragPayload;
+      if ((payload.source === "onstage" || payload.source === "backstage") && Number.isInteger(payload.index)) {
+        return payload;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const handleRoundtableDrop = (event: DragEvent<HTMLElement>, target: Exclude<RoundtableDropZone, null>) => {
+    event.preventDefault();
+    if (roundtableRunning) return;
+    const payload = readRoundtableDragPayload(event);
+    if (!payload) return;
+    if (target === "trash") {
+      removeRoundtableRole(payload.source, payload.index);
+    } else {
+      moveRoundtableRoleToTable(payload.source, payload.index);
+    }
+    setRoundtableDropZone(null);
+  };
 
   const sendChatMessage = async (userMessage: string) => {
     setMessages(prev => [
@@ -1236,48 +1315,7 @@ function App() {
           <div className="roundtable-page-body">
             <div className="roundtable-main">
               <div className="roundtable-roles-section">
-                <div className="roundtable-zone">
-                  <div className="roundtable-zone-header">
-                    <span className="roundtable-zone-dot" />
-                    <span className="roundtable-zone-label">{t("roundtableOnStage")}</span>
-                    <span className="roundtable-zone-count">{roundtableOnStage.filter(r => r.name.trim()).length}</span>
-                  </div>
-                  <div className="roundtable-zone-rail">
-                    {roundtableOnStage.filter(r => r.name.trim()).length === 0 && (
-                      <span className="roundtable-zone-empty">{t("roundtableStageEmpty")}</span>
-                    )}
-                    {roundtableOnStage.map((role, idx) => {
-                      if (!role.name.trim()) return null;
-                      const color = ROLE_COLORS[idx % ROLE_COLORS.length];
-                      return (
-                        <div
-                          key={`on-${idx}`}
-                          className="roundtable-role-card onstage"
-                          style={{ borderLeftColor: color, background: color + "0d" }}
-                          onClick={() => {
-                            if (roundtableRunning) return;
-                            setRoundtableOnStage(prev => prev.filter((_, j) => j !== idx));
-                            setRoundtableBackstage(prev => [...prev, { name: role.name, trait: role.trait }]);
-                          }}
-                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: idx }); }}
-                        >
-                          {!roundtableRunning && (
-                            <button className="roundtable-role-action" onClick={e => { e.stopPropagation(); setRoleEditing({ source: "onstage", index: idx }); }}><PenTool size={11} /></button>
-                          )}
-                          {!roundtableRunning && (
-                            <button className="roundtable-role-delete" onClick={e => { e.stopPropagation(); setRoundtableOnStage(prev => prev.filter((_, j) => j !== idx)); }}><X size={10} /></button>
-                          )}
-                          <div className="roundtable-role-avatar" style={{ background: color }}>{role.name[0]}</div>
-                          <div className="roundtable-role-info">
-                            <span className="roundtable-role-name">{role.name}</span>
-                            {role.trait.trim() && <span className="roundtable-role-trait-text">{role.trait}</span>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="roundtable-zone">
+                <div className="roundtable-card-pool">
                   <div className="roundtable-zone-header">
                     <span className="roundtable-zone-dot muted" />
                     <span className="roundtable-zone-label">{t("roundtableBackstage")}</span>
@@ -1291,26 +1329,89 @@ function App() {
                     )}
                   </div>
                   <div className="roundtable-zone-rail">
+                    {roundtableBackstage.filter(r => r.name.trim()).length === 0 && (
+                      <span className="roundtable-zone-empty">{t("roundtableCardsEmpty")}</span>
+                    )}
                     {roundtableBackstage.map((role, idx) => {
                       if (!role.name.trim()) return null;
+                      const cardKey = `backstage-${idx}`;
+                      const isFlipped = roundtableFlippedRole === cardKey;
                       return (
                         <div
                           key={`off-${idx}`}
-                          className="roundtable-role-card"
+                          className={`roundtable-role-card${isFlipped ? " flipped" : ""}`}
+                          draggable={!roundtableRunning}
+                          onDragStart={e => handleRoundtableDragStart(e, "backstage", idx)}
+                          onDragEnd={() => setRoundtableDropZone(null)}
                           onClick={() => {
                             if (roundtableRunning) return;
-                            setRoundtableBackstage(prev => prev.filter((_, j) => j !== idx));
-                            setRoundtableOnStage(prev => [...prev, { name: role.name, trait: role.trait }]);
+                            setRoundtableFlippedRole(prev => (prev === cardKey ? null : cardKey));
                           }}
                           onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "backstage", index: idx }); }}
                         >
+                          <div className="roundtable-role-card-inner">
+                            <div className="roundtable-role-card-face front">
+                              {!roundtableRunning && (
+                                <button className="roundtable-role-action" onClick={e => { e.stopPropagation(); setRoleEditing({ source: "backstage", index: idx }); }}><PenTool size={11} /></button>
+                              )}
+                              <div className="roundtable-role-avatar off">{role.name[0]}</div>
+                              <div className="roundtable-role-info">
+                                <span className="roundtable-role-name">{role.name}</span>
+                                <span className="roundtable-role-hint">{t("roundtableFlipHint")}</span>
+                              </div>
+                            </div>
+                            <div className="roundtable-role-card-face back">
+                              <span className="roundtable-role-name">{role.name}</span>
+                              <span className="roundtable-role-trait-text">{role.trait.trim() || t("roundtableNoTrait")}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div
+                  className={`roundtable-trash ${roundtableDropZone === "trash" ? "drop-active" : ""}`}
+                  onDragOver={e => { if (!roundtableRunning) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setRoundtableDropZone("trash"); } }}
+                  onDragLeave={() => setRoundtableDropZone(null)}
+                  onDrop={e => handleRoundtableDrop(e, "trash")}
+                >
+                  <Trash2 size={18} />
+                  <span>{t("roundtableTrash")}</span>
+                </div>
+              </div>
+              <div
+                className={`roundtable-table-area ${roundtableDropZone === "table" ? "table-drop-active" : ""}`}
+                onDragOver={e => { if (!roundtableRunning) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setRoundtableDropZone("table"); } }}
+                onDragLeave={() => setRoundtableDropZone(null)}
+                onDrop={e => handleRoundtableDrop(e, "table")}
+              >
+                <div className="roundtable-table">
+                  <div className="roundtable-zone-header">
+                    <span className="roundtable-zone-dot" />
+                    <span className="roundtable-zone-label">{t("roundtableOnStage")}</span>
+                    <span className="roundtable-zone-count">{roundtableOnStage.filter(r => r.name.trim()).length}</span>
+                  </div>
+                  <div className="roundtable-seat-ring">
+                    {roundtableOnStage.filter(r => r.name.trim()).length === 0 && (
+                      <span className="roundtable-zone-empty">{t("roundtableStageEmpty")}</span>
+                    )}
+                    {roundtableOnStage.map((role, idx) => {
+                      if (!role.name.trim()) return null;
+                      const color = ROLE_COLORS[idx % ROLE_COLORS.length];
+                      return (
+                        <div
+                          key={`seat-${idx}`}
+                          className="roundtable-seat"
+                          draggable={!roundtableRunning}
+                          onDragStart={e => handleRoundtableDragStart(e, "onstage", idx)}
+                          onDragEnd={() => setRoundtableDropZone(null)}
+                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: idx }); }}
+                        >
                           {!roundtableRunning && (
-                            <button className="roundtable-role-action" onClick={e => { e.stopPropagation(); setRoleEditing({ source: "backstage", index: idx }); }}><PenTool size={11} /></button>
+                            <button className="roundtable-role-action" onClick={e => { e.stopPropagation(); setRoleEditing({ source: "onstage", index: idx }); }}><PenTool size={11} /></button>
                           )}
-                          {!roundtableRunning && (
-                            <button className="roundtable-role-delete" onClick={e => { e.stopPropagation(); setRoundtableBackstage(prev => prev.filter((_, j) => j !== idx)); }}><X size={10} /></button>
-                          )}
-                          <div className="roundtable-role-avatar off">{role.name[0]}</div>
+                          <div className="roundtable-role-avatar" style={{ background: color }}>{role.name[0]}</div>
                           <div className="roundtable-role-info">
                             <span className="roundtable-role-name">{role.name}</span>
                             {role.trait.trim() && <span className="roundtable-role-trait-text">{role.trait}</span>}
@@ -1321,7 +1422,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className="roundtable-discussion" data-drop-zone="stage">
+              <div className="roundtable-discussion">
                 {roundtableSpeakers.length === 0 && !roundtableResult && (
                   <div className="roundtable-empty">
                     <Users size={48} />
