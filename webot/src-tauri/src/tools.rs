@@ -1,3 +1,4 @@
+use futures_util::future::join_all;
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter};
 
@@ -145,37 +146,49 @@ pub async fn execute_roundtable(
     for round in 1..=max_rounds {
         discussion.push_str(&format!("### 第 {round} 轮\n\n"));
 
-        for role in &roles {
-            let prompt = format!(
-                "你是{role}，正在参加关于「{topic}」的圆桌讨论。\
-                请基于你的专业领域发表观点。以下是目前的讨论记录：\n\n{discussion}\n\n\
-                请用200字以内发表你的观点，直接说内容，不要说'我认为'等开场白。"
-            );
+        let context_snapshot = discussion.clone();
+        let tasks: Vec<_> = roles.iter().map(|role| {
+            let role = role.clone();
+            let topic = topic.clone();
+            let context_snapshot = context_snapshot.clone();
+            let config = config.clone();
+            let app = app.clone();
 
-            let messages = vec![
-                json!({ "role": "system", "content": prompt }),
-                json!({ "role": "user", "content": format!("请{role}就「{topic}」发表第{round}轮观点") }),
-            ];
+            async move {
+                let prompt = format!(
+                    "你是{role}，正在参加关于「{topic}」的圆桌讨论。\
+                    请基于你的专业领域发表观点。以下是目前的讨论记录：\n\n{context_snapshot}\n\n\
+                    请用200字以内发表你的观点，直接说内容，不要说'我认为'等开场白。"
+                );
 
-            let base_payload = json!({ "round": round, "role": role });
+                let messages = vec![
+                    json!({ "role": "system", "content": prompt }),
+                    json!({ "role": "user", "content": format!("请{role}就「{topic}」发表第{round}轮观点") }),
+                ];
 
-            let _ = app.emit(
-                "roundtable-speaker",
-                json!({ "round": round, "role": role, "status": "start" }),
-            );
+                let base_payload = json!({ "round": round, "role": &role });
 
-            match crate::llm::stream_llm(config, &messages, app, "roundtable-speaker", base_payload).await {
-                Ok(content) => {
-                    discussion.push_str(&format!("**{role}**：{content}\n\n"));
-                    let _ = app.emit(
-                        "roundtable-speaker",
-                        json!({ "round": round, "role": role, "status": "done", "content": content }),
-                    );
-                }
-                Err(e) => {
-                    discussion.push_str(&format!("**{role}**：（发言失败：{e}）\n\n"));
+                let _ = app.emit(
+                    "roundtable-speaker",
+                    json!({ "round": round, "role": &role, "status": "start" }),
+                );
+
+                match crate::llm::stream_llm(&config, &messages, &app, "roundtable-speaker", base_payload).await {
+                    Ok(content) => {
+                        let _ = app.emit(
+                            "roundtable-speaker",
+                            json!({ "round": round, "role": &role, "status": "done", "content": &content }),
+                        );
+                        (role, content)
+                    }
+                    Err(e) => (role, format!("（发言失败：{e}）")),
                 }
             }
+        }).collect();
+
+        let results = join_all(tasks).await;
+        for (role, content) in results {
+            discussion.push_str(&format!("**{role}**：{content}\n\n"));
         }
     }
 
