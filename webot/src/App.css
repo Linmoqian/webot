@@ -1860,6 +1860,7 @@ textarea::placeholder {
 .roundtable-seat-ring {
   position: absolute;
   inset: 0;
+  pointer-events: none;
 }
 
 .roundtable-seat-ring > .roundtable-zone-empty {
@@ -1888,6 +1889,7 @@ textarea::placeholder {
   cursor: grab;
   touch-action: none;
   user-select: none;
+  pointer-events: auto;
   transform:
     translate(-50%, -50%)
     rotate(var(--seat-angle))
