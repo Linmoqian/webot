@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-
-export interface Message {
-  role: "user" | "agent";
-  content: string;
-  reasoning_content?: string;
-  isThinking?: boolean;
-  isFinished?: boolean;
-  showReasoning?: boolean;
-}
+import type { Message, ToolResultEvent } from "../types";
 
 type Translate = (key: string) => string;
 type Unlisten = () => void;
@@ -23,7 +15,7 @@ const createAgentMessage = (): Message => ({
   showReasoning: false,
 });
 
-export function useChatStream(t: Translate) {
+export function useChatStream(t: Translate, toolIds?: string[]) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const cleanupRef = useRef<Unlisten>(() => {});
@@ -73,6 +65,23 @@ export function useChatStream(t: Translate) {
         }));
       }));
 
+      unlisteners.push(await listen<{ name: string; arguments: Record<string, unknown> }>("chat-tool-call", (event) => {
+        const argsPreview = Object.entries(event.payload.arguments)
+          .map(([k, v]) => `${k}: ${String(v)}`)
+          .join(", ");
+        updateLatestAgentMessage(message => ({
+          ...message,
+          content: message.content + `\n[调用工具: ${event.payload.name}(${argsPreview})]\n`,
+        }));
+      }));
+
+      unlisteners.push(await listen<ToolResultEvent>("chat-tool-result", (event) => {
+        updateLatestAgentMessage(message => ({
+          ...message,
+          toolResults: [...(message.toolResults || []), event.payload],
+        }));
+      }));
+
       unlisteners.push(await listen<{ content: string }>("chat-text", (event) => {
         updateLatestAgentMessage(message => ({
           ...message,
@@ -102,7 +111,7 @@ export function useChatStream(t: Translate) {
         cleanup();
       }));
 
-      await invoke("start_chat", { message: userMessage });
+      await invoke("start_chat", { message: userMessage, toolIds });
     } catch {
       updateLatestAgentMessage(message => ({
         ...message,
@@ -113,7 +122,7 @@ export function useChatStream(t: Translate) {
       setIsLoading(false);
       cleanup();
     }
-  }, [t, updateLatestAgentMessage]);
+  }, [t, toolIds, updateLatestAgentMessage]);
 
   return {
     messages,
