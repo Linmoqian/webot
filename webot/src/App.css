@@ -1571,7 +1571,7 @@ textarea::placeholder {
   border: 1px solid #e5e5e5;
   border-left: 3px solid #ccc;
   position: relative;
-  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s, box-shadow 0.15s;
+  transition: transform 0.2s ease-out, opacity 0.15s, box-shadow 0.15s;
   --shift: 0;
   transform: translateX(calc(var(--shift) * 128px));
 }

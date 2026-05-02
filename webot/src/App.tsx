@@ -286,6 +286,44 @@ function App() {
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
   const [dragGhost, setDragGhost] = useState<{ source: "onstage" | "backstage"; index: number; role: { name: string; trait: string }; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const flipAnimRef = useRef(false);
+  const flipPrevRects = useRef<Map<string, DOMRect>>(new Map());
+
+  const recordFlipPositions = () => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const cards = rail.querySelectorAll(".roundtable-role-card");
+    const rects = new Map<string, DOMRect>();
+    cards.forEach(card => {
+      const name = card.getAttribute("data-role-name");
+      if (name) rects.set(name, card.getBoundingClientRect());
+    });
+    flipPrevRects.current = rects;
+  };
+
+  const playFlipAnimation = () => {
+    const rail = railRef.current;
+    const prevRects = flipPrevRects.current;
+    if (!rail || prevRects.size === 0 || flipAnimRef.current) return;
+    flipAnimRef.current = true;
+    const cards = rail.querySelectorAll(".roundtable-role-card");
+    cards.forEach(card => {
+      const name = card.getAttribute("data-role-name");
+      if (!name) return;
+      const prev = prevRects.get(name);
+      if (!prev) return;
+      const curr = card.getBoundingClientRect();
+      const dx = prev.left - curr.left;
+      const dy = prev.top - curr.top;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+      card.animate([
+        { transform: `translateX(${dx}px) translateY(${dy}px)` },
+        { transform: "translateX(0) translateY(0)" },
+      ], { duration: 300, easing: "cubic-bezier(0.2, 0, 0, 1)" });
+    });
+    setTimeout(() => { flipAnimRef.current = false; prevRects.clear(); }, 320);
+  };
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1231,10 +1269,10 @@ function App() {
                 const dragFlatIdx = dragGhost ? allRoles.findIndex(r => r.source === dragGhost.source && r.srcIdx === dragGhost.index) : -1;
                 return (
                   <div className="roundtable-panel-body">
-                    <div className="roundtable-role-rail" data-drop-zone="rail">
+                    <div className="roundtable-role-rail" data-drop-zone="rail" ref={railRef}>
                       {allRoles.map((item, flatIdx) => {
                         const { source, srcIdx, name, trait } = item;
-                        const key = source + "-" + srcIdx;
+                        const key = name;
                         const flipped = roundtableFlipped === key;
                         const isDragging = dragFlatIdx === flatIdx;
                         const isOnstage = source === "onstage";
@@ -1247,6 +1285,7 @@ function App() {
                         return (
                           <div
                             key={key}
+                            data-role-name={name}
                             className={"roundtable-role-card" + (isOnstage ? "" : " backstage") + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
                             style={{
                               borderColor: isOnstage ? ROLE_COLORS[srcIdx % ROLE_COLORS.length] : "#ccc",
@@ -1291,6 +1330,7 @@ function App() {
                                   const target = document.elementFromPoint(ev.clientX, ev.clientY);
                                   const stage = target?.closest('[data-drop-zone="stage"]');
                                   if (stage) {
+                                    recordFlipPositions();
                                     if (source === "backstage") {
                                       setRoundtableBackstage(prev => prev.filter((_, j) => j !== srcIdx));
                                       setRoundtableOnStage(prev => [...prev, { name, trait }]);
@@ -1298,16 +1338,18 @@ function App() {
                                       setRoundtableOnStage(prev => prev.filter((_, j) => j !== srcIdx));
                                       setRoundtableBackstage(prev => [...prev, { name, trait }]);
                                     }
+                                    requestAnimationFrame(() => { requestAnimationFrame(() => { playFlipAnimation(); }); });
                                   } else if (dragOverIndex !== null && dragFlatIdx >= 0 && dragOverIndex !== dragFlatIdx) {
+                                    recordFlipPositions();
                                     const items = [...allRoles];
                                     const [moved] = items.splice(dragFlatIdx, 1);
                                     items.splice(dragOverIndex, 0, moved);
-                                    const newOn = items.filter(r => r.source === "onstage" || (source === "backstage" && r.source === "backstage" && items.indexOf(r) < roundtableOnStage.length));
                                     const newOnStage = items.filter(r => r.source === "onstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const newOff = items.filter(r => r.source === "backstage").map(r => ({ name: r.name, trait: r.trait }));
                                     const allBackstage = [...roundtableBackstage.filter(r => !r.name.trim()), ...newOff];
                                     setRoundtableOnStage(newOnStage);
                                     setRoundtableBackstage(allBackstage);
+                                    requestAnimationFrame(() => { requestAnimationFrame(() => { playFlipAnimation(); }); });
                                   }
                                   setTimeout(() => { setDragGhost(null); setDragOverIndex(null); }, 0);
                                 }
