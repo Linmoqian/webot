@@ -284,6 +284,7 @@ function App() {
   const roundtableDragRef = useRef(false);
   const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
+  const [dragGhost, setDragGhost] = useState<{ source: "onstage" | "backstage"; index: number; role: { name: string; trait: string }; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1223,37 +1224,52 @@ function App() {
               </div>
               {roundtablePanelOpen && (
                 <div className="roundtable-panel-body">
-                  <div className="roundtable-role-rail"
-                    onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
-                    onDragLeave={e => { e.currentTarget.classList.remove("drag-over"); }}
-                    onDrop={e => {
-                      e.preventDefault();
-                      e.currentTarget.classList.remove("drag-over");
-                      const data = e.dataTransfer.getData("text/plain");
-                      if (!data) return;
-                      const [source, idxStr] = data.split(":");
-                      const idx = parseInt(idxStr, 10);
-                      if (source === "onstage" && !roundtableRunning) {
-                        const role = roundtableOnStage[idx];
-                        if (role) {
-                          setRoundtableOnStage(prev => prev.filter((_, j) => j !== idx));
-                          setRoundtableBackstage(prev => [...prev, role]);
-                        }
-                      }
-                    }}
-                  >
+                  <div className="roundtable-role-rail" data-drop-zone="rail">
                     {roundtableOnStage.map((role, i) => {
                       const key = "on-" + i;
                       const flipped = roundtableFlipped === key;
+                      const isDragging = dragGhost?.source === "onstage" && dragGhost?.index === i;
                       return (
                         <div
                           key={key}
-                          className={"roundtable-role-card" + (flipped ? " flipped" : "")}
+                          className={"roundtable-role-card" + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
                           style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
-                          draggable={!roundtableRunning && !flipped}
-                          onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
                           onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
                           onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: i }); }}
+                          onPointerDown={e => {
+                            if (roundtableRunning || flipped || e.button !== 0) return;
+                            const el = e.currentTarget as HTMLElement;
+                            const rect = el.getBoundingClientRect();
+                            const onMove = (ev: PointerEvent) => {
+                              const dx = ev.clientX - e.clientX;
+                              const dy = ev.clientY - e.clientY;
+                              if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+                                roundtableDragRef.current = true;
+                                setDragGhost({ source: "onstage", index: i, role, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
+                              }
+                              if (roundtableDragRef.current) {
+                                setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
+                              }
+                            };
+                            const onUp = (ev: PointerEvent) => {
+                              document.removeEventListener("pointermove", onMove);
+                              document.removeEventListener("pointerup", onUp);
+                              if (roundtableDragRef.current) {
+                                const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                                const stage = target?.closest('[data-drop-zone="stage"]');
+                                const rail = target?.closest('[data-drop-zone="rail"]');
+                                if (stage) {
+                                  setRoundtableOnStage(prev => prev.filter((_, j) => j !== i));
+                                  setRoundtableBackstage(prev => [...prev, role]);
+                                }
+                                setTimeout(() => setDragGhost(null), 0);
+                              }
+                              setTimeout(() => { roundtableDragRef.current = false; }, 0);
+                            };
+                            el.setPointerCapture(e.pointerId);
+                            document.addEventListener("pointermove", onMove);
+                            document.addEventListener("pointerup", onUp);
+                          }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">
@@ -1270,15 +1286,47 @@ function App() {
                     {roundtableBackstage.map((role, i) => {
                       const key = "off-" + i;
                       const flipped = roundtableFlipped === key;
+                      const isDragging = dragGhost?.source === "backstage" && dragGhost?.index === i;
                       if (!role.name.trim()) return null;
                       return (
                         <div
                           key={key}
-                          className={"roundtable-role-card backstage" + (flipped ? " flipped" : "")}
-                          draggable={!roundtableRunning && !flipped}
-                          onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                          className={"roundtable-role-card backstage" + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
                           onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
                           onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "backstage", index: i }); }}
+                          onPointerDown={e => {
+                            if (roundtableRunning || flipped || e.button !== 0) return;
+                            const el = e.currentTarget as HTMLElement;
+                            const rect = el.getBoundingClientRect();
+                            const onMove = (ev: PointerEvent) => {
+                              const dx = ev.clientX - e.clientX;
+                              const dy = ev.clientY - e.clientY;
+                              if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+                                roundtableDragRef.current = true;
+                                setDragGhost({ source: "backstage", index: i, role, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
+                              }
+                              if (roundtableDragRef.current) {
+                                setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
+                              }
+                            };
+                            const onUp = (ev: PointerEvent) => {
+                              document.removeEventListener("pointermove", onMove);
+                              document.removeEventListener("pointerup", onUp);
+                              if (roundtableDragRef.current) {
+                                const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                                const stage = target?.closest('[data-drop-zone="stage"]');
+                                if (stage) {
+                                  setRoundtableBackstage(prev => prev.filter((_, j) => j !== i));
+                                  setRoundtableOnStage(prev => [...prev, role]);
+                                }
+                                setTimeout(() => setDragGhost(null), 0);
+                              }
+                              setTimeout(() => { roundtableDragRef.current = false; }, 0);
+                            };
+                            el.setPointerCapture(e.pointerId);
+                            document.addEventListener("pointermove", onMove);
+                            document.addEventListener("pointerup", onUp);
+                          }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">
@@ -1295,25 +1343,7 @@ function App() {
                   </div>
                 </div>
               )}
-              <div className="roundtable-discussion"
-                onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add("stage-drop-active"); }}
-                onDragLeave={e => { e.currentTarget.classList.remove("stage-drop-active"); }}
-                onDrop={e => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove("stage-drop-active");
-                  const data = e.dataTransfer.getData("text/plain");
-                  if (!data || roundtableRunning) return;
-                  const [source, idxStr] = data.split(":");
-                  const idx = parseInt(idxStr, 10);
-                  if (source === "backstage") {
-                    const role = roundtableBackstage[idx];
-                    if (role) {
-                      setRoundtableBackstage(prev => prev.filter((_, j) => j !== idx));
-                      setRoundtableOnStage(prev => [...prev, role]);
-                    }
-                  }
-                }}
-              >
+              <div className="roundtable-discussion" data-drop-zone="stage">
                 {roundtableSpeakers.length === 0 && !roundtableResult && (
                   <div className="roundtable-empty">
                     <Users size={48} />
@@ -1338,6 +1368,16 @@ function App() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {dragGhost && (
+        <div
+          className="drag-ghost"
+          style={{ left: dragGhost.x - dragGhost.offsetX, top: dragGhost.y - dragGhost.offsetY }}
+        >
+          <div className="drag-ghost-avatar">{dragGhost.role.name[0]}</div>
+          <span className="drag-ghost-name">{dragGhost.role.name}</span>
         </div>
       )}
 
