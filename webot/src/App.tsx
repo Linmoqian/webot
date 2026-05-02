@@ -281,7 +281,19 @@ function App() {
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
   const [roundtablePanelOpen, setRoundtablePanelOpen] = useState(false);
   const [roundtableFlipped, setRoundtableFlipped] = useState<string | null>(null);
+  const [roundtableHistoryOpen, setRoundtableHistoryOpen] = useState(false);
+  const [roundtableHistory, setRoundtableHistory] = useState<{ id: string; topic: string; speakers: { round: number; role: string; content: string; color: string }[]; result: string | null; createdAt: number }[]>(() => {
+    try {
+      const saved = localStorage.getItem("webot-roundtable-history");
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [roundtableViewingHistory, setRoundtableViewingHistory] = useState<typeof roundtableHistory[number] | null>(null);
   const roundtableDragRef = useRef(false);
+  const roundtableTopicRef = useRef(roundtableTopic);
+  const roundtableSpeakersRef = useRef(roundtableSpeakers);
+  useEffect(() => { roundtableTopicRef.current = roundtableTopic; }, [roundtableTopic]);
+  useEffect(() => { roundtableSpeakersRef.current = roundtableSpeakers; }, [roundtableSpeakers]);
   const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
   const [dragGhost, setDragGhost] = useState<{ source: "onstage" | "backstage"; index: number; role: { name: string; trait: string }; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
@@ -393,6 +405,21 @@ function App() {
     const unlistenDone = listen<{ result: string }>("roundtable-done", event => {
       setRoundtableRunning(false);
       setRoundtableResult(event.payload.result);
+      const speakers = roundtableSpeakersRef.current;
+      if (speakers.length > 0) {
+        const record = {
+          id: Date.now().toString(),
+          topic: roundtableTopicRef.current,
+          speakers,
+          result: event.payload.result,
+          createdAt: Date.now(),
+        };
+        setRoundtableHistory(prev => {
+          const updated = [record, ...prev].slice(0, 20);
+          localStorage.setItem("webot-roundtable-history", JSON.stringify(updated));
+          return updated;
+        });
+      }
     });
     return () => { unlistenSpeaker.then(fn => fn()); unlistenDone.then(fn => fn()); };
   }, []);
@@ -1237,6 +1264,13 @@ function App() {
               >
                 {roundtableRunning ? <Loader2 size={16} className="spinner" /> : t("roundtableStart")}
               </button>
+              <button
+                className="roundtable-history-btn"
+                onClick={() => setRoundtableHistoryOpen(prev => !prev)}
+                title={t("roundtableHistory")}
+              >
+                {t("roundtableHistory")}
+              </button>
             </div>
             <button className="sidebar-close-btn" onClick={() => { setActivePage(null); setRoundtableRunning(false); setRoundtableSpeakers([]); setRoundtableResult(null); }}>
               <X size={16} />
@@ -1392,7 +1426,7 @@ function App() {
                       <span className="roundtable-speaker-name">{speaker.role}</span>
                       <span className="roundtable-speaker-round">R{speaker.round}</span>
                     </div>
-                    <div className="roundtable-speaker-content">{speaker.content}</div>
+                    <div className="roundtable-speaker-content">{renderMarkdown(speaker.content)}</div>
                   </div>
                 ))}
                 {roundtableResult && (
@@ -1401,6 +1435,68 @@ function App() {
                   </div>
                 )}
               </div>
+              {roundtableHistoryOpen && (
+                <div className="roundtable-history-panel">
+                  <div className="roundtable-history-header">
+                    <span>{t("roundtableHistory")}</span>
+                    <button onClick={() => setRoundtableHistoryOpen(false)}><X size={14} /></button>
+                  </div>
+                  {roundtableHistory.length === 0 ? (
+                    <div className="roundtable-history-empty">{t("roundtableNoHistory")}</div>
+                  ) : (
+                    roundtableHistory.map(record => (
+                      <div key={record.id} className="roundtable-history-item" onClick={() => setRoundtableViewingHistory(record)}>
+                        <div className="roundtable-history-item-topic">{record.topic}</div>
+                        <div className="roundtable-history-item-meta">
+                          <span>{new Date(record.createdAt).toLocaleString(lang === "zh" ? "zh-CN" : "en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                          <span>{record.speakers.map(s => s.role).filter((r, i, a) => a.indexOf(r) === i).length} {lang === "zh" ? "位专家" : "experts"}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {roundtableViewingHistory && (
+        <div className="qr-modal-overlay" onClick={() => setRoundtableViewingHistory(null)}>
+          <div className="qr-modal roundtable-history-detail-modal" onClick={e => e.stopPropagation()}>
+            <button className="qr-modal-close" onClick={() => setRoundtableViewingHistory(null)}>
+              <X size={18} />
+            </button>
+            <h3 className="qr-modal-title">{roundtableViewingHistory.topic}</h3>
+            <div className="roundtable-history-detail-time">
+              {new Date(roundtableViewingHistory.createdAt).toLocaleString(lang === "zh" ? "zh-CN" : "en-US")}
+            </div>
+            <div className="roundtable-history-detail-speakers">
+              {roundtableViewingHistory.speakers.map((speaker, i) => (
+                <div key={i} className="roundtable-speaker-card" style={{ borderLeftColor: speaker.color }}>
+                  <div className="roundtable-speaker-header">
+                    <div className="roundtable-speaker-avatar" style={{ background: speaker.color }}>{speaker.role[0]}</div>
+                    <span className="roundtable-speaker-name">{speaker.role}</span>
+                    <span className="roundtable-speaker-round">R{speaker.round}</span>
+                  </div>
+                  <div className="roundtable-speaker-content">{renderMarkdown(speaker.content)}</div>
+                </div>
+              ))}
+            </div>
+            {roundtableViewingHistory.result && (
+              <div className="roundtable-summary">
+                {renderMarkdown(roundtableViewingHistory.result)}
+              </div>
+            )}
+            <div className="roundtable-history-detail-actions">
+              <button className="roundtable-history-delete-btn" onClick={() => {
+                setRoundtableHistory(prev => {
+                  const updated = prev.filter(r => r.id !== roundtableViewingHistory!.id);
+                  localStorage.setItem("webot-roundtable-history", JSON.stringify(updated));
+                  return updated;
+                });
+                setRoundtableViewingHistory(null);
+              }}>{t("roundtableDeleteRecord")}</button>
             </div>
           </div>
         </div>
