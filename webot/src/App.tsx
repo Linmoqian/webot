@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type DragEvent } from "react";
+import { useState, useRef, useEffect, useCallback, type CSSProperties, type PointerEvent } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users, Trash2 } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -33,6 +33,15 @@ type RoundtableRole = { name: string; trait: string };
 type RoundtableRoleSource = "onstage" | "backstage";
 type RoundtableDragPayload = { source: RoundtableRoleSource; index: number };
 type RoundtableDropZone = "table" | "trash" | null;
+type RoundtablePointerDrag = RoundtableDragPayload & {
+  role: RoundtableRole;
+  pointerId: number;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  dragging: boolean;
+};
 
 declare global {
   interface Window {
@@ -302,12 +311,15 @@ function App() {
   const [roundtableViewingHistory, setRoundtableViewingHistory] = useState<typeof roundtableHistory[number] | null>(null);
   const roundtableTopicRef = useRef(roundtableTopic);
   const roundtableSpeakersRef = useRef(roundtableSpeakers);
+  const roundtablePointerDragRef = useRef<RoundtablePointerDrag | null>(null);
+  const roundtableSuppressClickRef = useRef(false);
   useEffect(() => { roundtableTopicRef.current = roundtableTopic; }, [roundtableTopic]);
   useEffect(() => { roundtableSpeakersRef.current = roundtableSpeakers; }, [roundtableSpeakers]);
   const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
   const [roundtableFlippedRole, setRoundtableFlippedRole] = useState<string | null>(null);
   const [roundtableDropZone, setRoundtableDropZone] = useState<RoundtableDropZone>(null);
+  const [roundtablePointerDrag, setRoundtablePointerDrag] = useState<RoundtablePointerDrag | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -611,38 +623,81 @@ function App() {
     setRoundtableOnStage(stage => [...stage, { name: role.name, trait: role.trait }]);
   }, [roundtableBackstage]);
 
-  const handleRoundtableDragStart = (
-    event: DragEvent<HTMLElement>,
-    source: RoundtableRoleSource,
-    index: number,
-  ) => {
-    event.dataTransfer.setData("application/json", JSON.stringify({ source, index }));
-    event.dataTransfer.effectAllowed = "move";
+  const getRoundtableDropZoneAt = (x: number, y: number): RoundtableDropZone => {
+    const dropElement = document
+      .elementFromPoint(x, y)
+      ?.closest<HTMLElement>("[data-roundtable-drop-zone]");
+    const zone = dropElement?.dataset.roundtableDropZone;
+    return zone === "table" || zone === "trash" ? zone : null;
   };
 
-  const readRoundtableDragPayload = (event: DragEvent<HTMLElement>): RoundtableDragPayload | null => {
-    try {
-      const rawPayload = event.dataTransfer.getData("application/json");
-      const payload = JSON.parse(rawPayload) as RoundtableDragPayload;
-      if ((payload.source === "onstage" || payload.source === "backstage") && Number.isInteger(payload.index)) {
-        return payload;
-      }
-    } catch {
-      return null;
-    }
-    return null;
-  };
-
-  const handleRoundtableDrop = (event: DragEvent<HTMLElement>, target: Exclude<RoundtableDropZone, null>) => {
-    event.preventDefault();
-    if (roundtableRunning) return;
-    const payload = readRoundtableDragPayload(event);
-    if (!payload) return;
+  const applyRoundtableDrop = (payload: RoundtableDragPayload, target: Exclude<RoundtableDropZone, null>) => {
     if (target === "trash") {
       removeRoundtableRole(payload.source, payload.index);
     } else {
       moveRoundtableRoleToTable(payload.source, payload.index);
     }
+    setRoundtableDropZone(null);
+  };
+
+  const startRoundtablePointerDrag = (
+    event: PointerEvent<HTMLElement>,
+    source: RoundtableRoleSource,
+    index: number,
+    role: RoundtableRole,
+  ) => {
+    if (roundtableRunning || (event.target as HTMLElement).closest("button")) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const nextDrag = {
+      source,
+      index,
+      role,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      currentX: event.clientX,
+      currentY: event.clientY,
+      dragging: false,
+    };
+    roundtablePointerDragRef.current = nextDrag;
+    setRoundtablePointerDrag(nextDrag);
+  };
+
+  const moveRoundtablePointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const activeDrag = roundtablePointerDragRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    const distance = Math.hypot(event.clientX - activeDrag.startX, event.clientY - activeDrag.startY);
+    const dragging = activeDrag.dragging || distance > 6;
+    if (dragging) {
+      event.preventDefault();
+      setRoundtableDropZone(getRoundtableDropZoneAt(event.clientX, event.clientY));
+    }
+    const nextDrag = {
+      ...activeDrag,
+      currentX: event.clientX,
+      currentY: event.clientY,
+      dragging,
+    };
+    roundtablePointerDragRef.current = nextDrag;
+    setRoundtablePointerDrag(nextDrag);
+  };
+
+  const endRoundtablePointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const activeDrag = roundtablePointerDragRef.current;
+    if (!activeDrag || activeDrag.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    if (activeDrag.dragging) {
+      event.preventDefault();
+      roundtableSuppressClickRef.current = true;
+      const dropZone = getRoundtableDropZoneAt(event.clientX, event.clientY);
+      if (dropZone) {
+        applyRoundtableDrop(activeDrag, dropZone);
+      }
+    }
+    roundtablePointerDragRef.current = null;
+    setRoundtablePointerDrag(null);
     setRoundtableDropZone(null);
   };
 
@@ -800,6 +855,7 @@ function App() {
     { value: "dark", label: t("themeDark") },
     { value: "system", label: t("themeSystem") },
   ];
+  const roundtableSeatCount = roundtableOnStage.filter(r => r.name.trim()).length;
 
   return (
     <div className="layout-container">
@@ -1336,15 +1392,23 @@ function App() {
                       if (!role.name.trim()) return null;
                       const cardKey = `backstage-${idx}`;
                       const isFlipped = roundtableFlippedRole === cardKey;
+                      const isDragging = roundtablePointerDrag?.dragging
+                        && roundtablePointerDrag.source === "backstage"
+                        && roundtablePointerDrag.index === idx;
                       return (
                         <div
                           key={`off-${idx}`}
-                          className={`roundtable-role-card${isFlipped ? " flipped" : ""}`}
-                          draggable={!roundtableRunning}
-                          onDragStart={e => handleRoundtableDragStart(e, "backstage", idx)}
-                          onDragEnd={() => setRoundtableDropZone(null)}
+                          className={`roundtable-role-card${isFlipped ? " flipped" : ""}${isDragging ? " is-dragging" : ""}`}
+                          onPointerDown={e => startRoundtablePointerDrag(e, "backstage", idx, role)}
+                          onPointerMove={moveRoundtablePointerDrag}
+                          onPointerUp={endRoundtablePointerDrag}
+                          onPointerCancel={endRoundtablePointerDrag}
                           onClick={() => {
                             if (roundtableRunning) return;
+                            if (roundtableSuppressClickRef.current) {
+                              roundtableSuppressClickRef.current = false;
+                              return;
+                            }
                             setRoundtableFlippedRole(prev => (prev === cardKey ? null : cardKey));
                           }}
                           onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "backstage", index: idx }); }}
@@ -1372,9 +1436,7 @@ function App() {
                 </div>
                 <div
                   className={`roundtable-trash ${roundtableDropZone === "trash" ? "drop-active" : ""}`}
-                  onDragOver={e => { if (!roundtableRunning) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setRoundtableDropZone("trash"); } }}
-                  onDragLeave={() => setRoundtableDropZone(null)}
-                  onDrop={e => handleRoundtableDrop(e, "trash")}
+                  data-roundtable-drop-zone="trash"
                 >
                   <Trash2 size={18} />
                   <span>{t("roundtableTrash")}</span>
@@ -1382,30 +1444,39 @@ function App() {
               </div>
               <div
                 className={`roundtable-table-area ${roundtableDropZone === "table" ? "table-drop-active" : ""}`}
-                onDragOver={e => { if (!roundtableRunning) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setRoundtableDropZone("table"); } }}
-                onDragLeave={() => setRoundtableDropZone(null)}
-                onDrop={e => handleRoundtableDrop(e, "table")}
+                data-roundtable-drop-zone="table"
               >
+                <div className="roundtable-table-shell">
                 <div className="roundtable-table">
                   <div className="roundtable-zone-header">
                     <span className="roundtable-zone-dot" />
                     <span className="roundtable-zone-label">{t("roundtableOnStage")}</span>
                     <span className="roundtable-zone-count">{roundtableOnStage.filter(r => r.name.trim()).length}</span>
                   </div>
-                  <div className="roundtable-seat-ring">
+                </div>
+                <div className="roundtable-seat-ring">
                     {roundtableOnStage.filter(r => r.name.trim()).length === 0 && (
                       <span className="roundtable-zone-empty">{t("roundtableStageEmpty")}</span>
                     )}
                     {roundtableOnStage.map((role, idx) => {
                       if (!role.name.trim()) return null;
                       const color = ROLE_COLORS[idx % ROLE_COLORS.length];
+                      const angle = (idx * 360 / Math.max(roundtableSeatCount, 1)) - 90;
+                      const isDragging = roundtablePointerDrag?.dragging
+                        && roundtablePointerDrag.source === "onstage"
+                        && roundtablePointerDrag.index === idx;
                       return (
                         <div
                           key={`seat-${idx}`}
-                          className="roundtable-seat"
-                          draggable={!roundtableRunning}
-                          onDragStart={e => handleRoundtableDragStart(e, "onstage", idx)}
-                          onDragEnd={() => setRoundtableDropZone(null)}
+                          className={`roundtable-seat${isDragging ? " is-dragging" : ""}`}
+                          style={{
+                            "--seat-angle": `${angle}deg`,
+                            "--seat-angle-reverse": `${-angle}deg`,
+                          } as CSSProperties}
+                          onPointerDown={e => startRoundtablePointerDrag(e, "onstage", idx, role)}
+                          onPointerMove={moveRoundtablePointerDrag}
+                          onPointerUp={endRoundtablePointerDrag}
+                          onPointerCancel={endRoundtablePointerDrag}
                           onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: idx }); }}
                         >
                           {!roundtableRunning && (
@@ -1422,6 +1493,15 @@ function App() {
                   </div>
                 </div>
               </div>
+              {roundtablePointerDrag?.dragging && (
+                <div
+                  className="roundtable-drag-ghost"
+                  style={{ left: roundtablePointerDrag.currentX, top: roundtablePointerDrag.currentY } as CSSProperties}
+                >
+                  <div className="roundtable-role-avatar off">{roundtablePointerDrag.role.name[0]}</div>
+                  <span>{roundtablePointerDrag.role.name}</span>
+                </div>
+              )}
               <div className="roundtable-discussion">
                 {roundtableSpeakers.length === 0 && !roundtableResult && (
                   <div className="roundtable-empty">

@@ -1584,17 +1584,15 @@ textarea::placeholder {
   flex-shrink: 0;
   width: 148px;
   height: 76px;
-  cursor: pointer;
+  cursor: grab;
   position: relative;
   perspective: 700px;
   animation: cardEnter 0.25s cubic-bezier(0.2, 0, 0, 1);
+  touch-action: none;
+  user-select: none;
 }
 
-.roundtable-role-card[draggable="true"] {
-  cursor: grab;
-}
-
-.roundtable-role-card[draggable="true"]:active {
+.roundtable-role-card:active {
   cursor: grabbing;
 }
 
@@ -1637,6 +1635,11 @@ textarea::placeholder {
 
 .roundtable-role-card:hover .roundtable-role-card-face {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.roundtable-role-card.is-dragging,
+.roundtable-seat.is-dragging {
+  opacity: 0.42;
 }
 
 .roundtable-role-card:hover .roundtable-role-action,
@@ -1733,8 +1736,12 @@ textarea::placeholder {
 }
 
 .roundtable-table-area {
-  padding: 18px 20px 22px;
+  min-height: 360px;
+  padding: 24px 20px 28px;
   border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.15s;
 }
 
@@ -1742,9 +1749,19 @@ textarea::placeholder {
   background: #f0fdf4;
 }
 
-.roundtable-table {
+.roundtable-table-shell {
   position: relative;
-  min-height: 210px;
+  width: min(560px, 100%);
+  height: 320px;
+}
+
+.roundtable-table {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 230px;
+  height: 230px;
+  transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 10px solid #d6a86c;
   background:
@@ -1769,18 +1786,24 @@ textarea::placeholder {
 
 .roundtable-seat-ring {
   position: absolute;
-  inset: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 32px 18px;
+  inset: 0;
+}
+
+.roundtable-seat-ring > .roundtable-zone-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  text-align: center;
 }
 
 .roundtable-seat {
-  min-width: 128px;
-  max-width: 168px;
+  --seat-radius: clamp(135px, 31vw, 205px);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 138px;
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.7);
@@ -1790,11 +1813,36 @@ textarea::placeholder {
   align-items: center;
   gap: 8px;
   cursor: grab;
-  position: relative;
+  touch-action: none;
+  user-select: none;
+  transform:
+    translate(-50%, -50%)
+    rotate(var(--seat-angle))
+    translateX(var(--seat-radius))
+    rotate(var(--seat-angle-reverse));
 }
 
 .roundtable-seat:active {
   cursor: grabbing;
+}
+
+.roundtable-drag-ghost {
+  position: fixed;
+  z-index: 300;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  min-width: 142px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #333;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 @keyframes cardEnter {
@@ -2329,6 +2377,12 @@ textarea::placeholder {
     background: rgba(26, 26, 26, 0.92);
     border-color: rgba(255, 255, 255, 0.12);
     box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  }
+  .roundtable-drag-ghost {
+    background: rgba(34, 34, 34, 0.96);
+    border-color: #444;
+    color: #e5e5e5;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.32);
   }
   .roundtable-empty p { color: #555; }
   .roundtable-speaker-card { border-color: #333; }

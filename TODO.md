@@ -1,3 +1,4 @@
 - [x] 拆分前端 useChatStream
 - [x] 插件市场 MVP：plugins.rs + 动态工具注册 + HTTP 执行 + GitHub 远程索引 + 前端真实市场 UI
 - [x] 圆桌会议改为角色卡片拖拽上桌
+- [x] 修复角色卡拖动并让席位围绕圆桌
