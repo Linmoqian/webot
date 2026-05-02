@@ -280,6 +280,7 @@ function App() {
   const [roundtableRunning, setRoundtableRunning] = useState(false);
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
   const [roundtablePanelOpen, setRoundtablePanelOpen] = useState(false);
+  const [roundtableFlipped, setRoundtableFlipped] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1232,50 +1233,107 @@ function App() {
                       }
                     }}
                   >
-                    {roundtableOnStage.map((role, i) => (
-                      <div
-                        key={"on-" + i}
-                        className="roundtable-role-tag onstage"
-                        style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
-                        draggable={!roundtableRunning}
-                        onDragStart={e => { e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
-                      >
-                        <div className="roundtable-role-tag-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
-                        <span className="roundtable-role-tag-name">{role.name}</span>
-                        {!roundtableRunning && (
-                          <button className="roundtable-role-tag-x" onClick={e => { e.stopPropagation(); setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableBackstage(prev => [...prev, role]); }}>×</button>
-                        )}
-                      </div>
-                    ))}
-                    {roundtableBackstage.map((role, i) => (
-                      <div
-                        key={"off-" + i}
-                        className="roundtable-role-tag backstage"
-                        draggable={!roundtableRunning && !!role.name.trim()}
-                        onDragStart={e => { e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
-                      >
-                        {role.name.trim() ? (
-                          <>
-                            <div className="roundtable-role-tag-avatar off">{role.name[0]}</div>
-                            <span className="roundtable-role-tag-name">{role.name}</span>
-                            {!roundtableRunning && (
-                              <button className="roundtable-role-tag-x" onClick={e => { e.stopPropagation(); setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); }}>×</button>
-                            )}
-                          </>
-                        ) : (
-                          <input
-                            className="roundtable-role-tag-input"
-                            type="text"
-                            placeholder={t("roundtableRoleName")}
-                            value={role.name}
-                            onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                            disabled={roundtableRunning}
-                            autoFocus
-                            onKeyDown={e => { if (e.key === "Enter" && role.name.trim()) { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); } }}
-                          />
-                        )}
-                      </div>
-                    ))}
+                    {roundtableOnStage.map((role, i) => {
+                      const key = "on-" + i;
+                      const flipped = roundtableFlipped === key;
+                      return (
+                        <div
+                          key={key}
+                          className={"roundtable-role-card" + (flipped ? " flipped" : "")}
+                          style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
+                          draggable={!roundtableRunning && !flipped}
+                          onDragStart={e => { e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                          onClick={() => setRoundtableFlipped(prev => prev === key ? null : key)}
+                        >
+                          <div className="roundtable-role-card-inner">
+                            <div className="roundtable-role-card-front">
+                              <div className="roundtable-role-card-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
+                              <span className="roundtable-role-card-name">{role.name}</span>
+                            </div>
+                            <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
+                              <input
+                                className="roundtable-role-card-edit"
+                                value={role.name}
+                                placeholder={t("roundtableRoleName")}
+                                onChange={e => setRoundtableOnStage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                                disabled={roundtableRunning}
+                              />
+                              <input
+                                className="roundtable-role-card-edit trait"
+                                value={role.trait}
+                                placeholder={t("roundtableRoleTrait")}
+                                onChange={e => setRoundtableOnStage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
+                                disabled={roundtableRunning}
+                              />
+                              {!roundtableRunning && (
+                                <div className="roundtable-role-card-actions">
+                                  <button onClick={() => { setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableBackstage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableOffStage")}</button>
+                                  <button className="del" onClick={() => { setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableFlipped(null); }}>×</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {roundtableBackstage.map((role, i) => {
+                      const key = "off-" + i;
+                      const flipped = roundtableFlipped === key;
+                      if (!role.name.trim()) {
+                        return (
+                          <div key={key} className="roundtable-role-card empty">
+                            <input
+                              className="roundtable-role-card-edit"
+                              type="text"
+                              placeholder={t("roundtableRoleName")}
+                              value={role.name}
+                              onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                              disabled={roundtableRunning}
+                              autoFocus
+                              onKeyDown={e => { if (e.key === "Enter" && role.name.trim()) { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); } }}
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <div
+                          key={key}
+                          className={"roundtable-role-card backstage" + (flipped ? " flipped" : "")}
+                          draggable={!roundtableRunning && !flipped}
+                          onDragStart={e => { e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                          onClick={() => setRoundtableFlipped(prev => prev === key ? null : key)}
+                        >
+                          <div className="roundtable-role-card-inner">
+                            <div className="roundtable-role-card-front">
+                              <div className="roundtable-role-card-avatar off">{role.name[0]}</div>
+                              <span className="roundtable-role-card-name">{role.name}</span>
+                            </div>
+                            <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
+                              <input
+                                className="roundtable-role-card-edit"
+                                value={role.name}
+                                placeholder={t("roundtableRoleName")}
+                                onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
+                                disabled={roundtableRunning}
+                              />
+                              <input
+                                className="roundtable-role-card-edit trait"
+                                value={role.trait}
+                                placeholder={t("roundtableRoleTrait")}
+                                onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
+                                disabled={roundtableRunning}
+                              />
+                              {!roundtableRunning && (
+                                <div className="roundtable-role-card-actions">
+                                  <button onClick={() => { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableGoStage")}</button>
+                                  <button className="del" onClick={() => { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableFlipped(null); }}>×</button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
