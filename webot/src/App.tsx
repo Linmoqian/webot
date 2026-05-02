@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users, Trash2, Plus } from "lucide-react";
-import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
+import { IMAGE_EXTS, getImageExt, isImagePath, isPassThroughUrl, isLocalPath, fileUrlToPath, resolveImageSrc, transformMarkdownUrl, preprocessMediaMarkers, preprocessLocalImageLines } from "./utils/image";
+import { getRoundtableRoleKey } from "./utils/roundtable";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -43,10 +46,6 @@ type RoundtablePointerDrag = RoundtableDragPayload & {
   dragging: boolean;
 };
 
-function getRoundtableRoleKey(source: RoundtableRoleSource, index: number, role: RoundtableRole): string {
-  return `${source}:${index}:${role.name}:${role.trait}`;
-}
-
 declare global {
   interface Window {
     webotDebugBus?: {
@@ -56,98 +55,6 @@ declare global {
 }
 
 const THEME_KEY = "webot-theme";
-
-const IMAGE_EXTS = new Set(["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "tiff", "ico"]);
-
-function getImageExt(value: string): string {
-  const withoutQuery = value.split(/[?#]/)[0];
-  return withoutQuery.split(".").pop()?.toLowerCase() || "";
-}
-
-function isImagePath(value: string): boolean {
-  return IMAGE_EXTS.has(getImageExt(value));
-}
-
-function isPassThroughUrl(value: string): boolean {
-  return /^(https?:|asset:|data:|blob:)/i.test(value);
-}
-
-function isLocalPath(value: string): boolean {
-  return /^(file:|[a-zA-Z]:[\\/]|\\\\|\/)/.test(value);
-}
-
-function fileUrlToPath(value: string): string {
-  try {
-    const url = new URL(value);
-    const pathname = decodeURIComponent(url.pathname);
-    if (/^\/[a-zA-Z]:/.test(pathname)) {
-      return pathname.slice(1);
-    }
-    return pathname;
-  } catch {
-    return value.replace(/^file:\/\//i, "");
-  }
-}
-
-function resolveImageSrc(src: string | undefined, mediaDir = ""): string | undefined {
-  if (!src) return src;
-
-  const trimmed = src.trim();
-  if (isPassThroughUrl(trimmed)) return trimmed;
-
-  if (/^file:/i.test(trimmed)) {
-    return convertFileSrc(fileUrlToPath(trimmed));
-  }
-
-  if (isLocalPath(trimmed)) {
-    return convertFileSrc(trimmed);
-  }
-
-  if (mediaDir && isImagePath(trimmed)) {
-    return convertFileSrc(`${mediaDir}/${trimmed}`);
-  }
-
-  return trimmed;
-}
-
-function transformMarkdownUrl(url: string, mediaDir = ""): string {
-  if (isImagePath(url) || /^file:/i.test(url) || isLocalPath(url)) {
-    return resolveImageSrc(url, mediaDir) || url;
-  }
-  return url;
-}
-
-function preprocessMediaMarkers(text: string, mediaDir: string): string {
-  return text.replace(/\[media:\s*([^\]]+)\]/g, (_match, filename: string) => {
-    const trimmed = filename.trim();
-    const filePath = `${mediaDir}/${trimmed}`;
-    const url = convertFileSrc(filePath);
-    const ext = trimmed.split(".").pop()?.toLowerCase() || "";
-    if (IMAGE_EXTS.has(ext)) {
-      return `![${trimmed}](${url})`;
-    }
-    return `[${trimmed}](${url})`;
-  });
-}
-
-function preprocessLocalImageLines(text: string, mediaDir = ""): string {
-  return text
-    .split("\n")
-    .map((line) => {
-      const trimmed = line.trim();
-      if (
-        trimmed &&
-        !trimmed.startsWith("!") &&
-        isImagePath(trimmed) &&
-        (isLocalPath(trimmed) || (mediaDir && !/^[a-z]+:/i.test(trimmed)))
-      ) {
-        const url = resolveImageSrc(trimmed, mediaDir) || trimmed;
-        return `${line.slice(0, line.indexOf(trimmed))}![${trimmed}](${url})`;
-      }
-      return line;
-    })
-    .join("\n");
-}
 
 function CardRenderer({ data }: { data: Record<string, unknown> }) {
   return (

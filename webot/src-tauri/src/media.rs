@@ -330,3 +330,79 @@ pub async fn send_media_file(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_md5_hex_empty() {
+        assert_eq!(md5_hex(&[]), "d41d8cd98f00b204e9800998ecf8427e");
+    }
+
+    #[test]
+    fn test_md5_hex_hello() {
+        assert_eq!(md5_hex(b"hello"), "5d41402abc4b2a76b9719d911017c592");
+    }
+
+    #[test]
+    fn test_aes_ecb_block_alignment() {
+        let key = [0u8; 16];
+        let encrypted = aes_ecb_encrypt(b"test", &key);
+        assert_eq!(encrypted.len() % 16, 0);
+        assert_eq!(encrypted.len(), 16);
+
+        let encrypted2 = aes_ecb_encrypt(b"0123456789abcdef", &key);
+        assert_eq!(encrypted2.len(), 32);
+    }
+
+    #[test]
+    fn test_aes_ecb_deterministic() {
+        let key = [1u8; 16];
+        let a = aes_ecb_encrypt(b"same input", &key);
+        let b = aes_ecb_encrypt(b"same input", &key);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_detect_media_type_image() {
+        let info = detect_media_type(std::path::Path::new("photo.jpg"));
+        assert_eq!(info.upload_type, UPLOAD_MEDIA_IMAGE);
+        assert_eq!(info.item_type, ITEM_IMAGE);
+
+        let info2 = detect_media_type(std::path::Path::new("pic.PNG"));
+        assert_eq!(info2.upload_type, UPLOAD_MEDIA_IMAGE);
+    }
+
+    #[test]
+    fn test_detect_media_type_video() {
+        let info = detect_media_type(std::path::Path::new("clip.mp4"));
+        assert_eq!(info.upload_type, UPLOAD_MEDIA_VIDEO);
+        assert_eq!(info.item_type, ITEM_VIDEO);
+    }
+
+    #[test]
+    fn test_detect_media_type_voice() {
+        let info = detect_media_type(std::path::Path::new("audio.mp3"));
+        assert_eq!(info.upload_type, UPLOAD_MEDIA_VOICE);
+        assert_eq!(info.item_type, ITEM_VOICE);
+    }
+
+    #[test]
+    fn test_detect_media_type_file() {
+        let info = detect_media_type(std::path::Path::new("doc.pdf"));
+        assert_eq!(info.upload_type, UPLOAD_MEDIA_FILE);
+        assert_eq!(info.item_type, ITEM_FILE);
+    }
+
+    #[test]
+    fn test_urlencoding_safe_chars() {
+        assert_eq!(urlencoding("abcXYZ012-_.~"), "abcXYZ012-_.~");
+    }
+
+    #[test]
+    fn test_urlencoding_special_chars() {
+        assert_eq!(urlencoding(" "), "%20");
+        assert_eq!(urlencoding("a b"), "a%20b");
+    }
+}

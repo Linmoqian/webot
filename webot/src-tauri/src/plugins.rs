@@ -170,3 +170,108 @@ pub async fn execute_http_tool(endpoint: &str, args: Value) -> Result<String, St
         .await
         .map_err(|e| format!("读取工具响应失败: {e}"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn make_manifest(overrides: &str) -> PluginManifest {
+        let base = json!({
+            "id": "test-plugin",
+            "name": {"zh": "测试插件", "en": "Test Plugin"},
+            "description": {"zh": "描述", "en": "Description"},
+            "version": "1.0",
+            "author": "tester",
+            "icon": "code",
+            "type": "remote",
+            "tool": {
+                "type": "function",
+                "function": {
+                    "name": "test_tool",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            }
+        });
+        let merged: Value = if let Ok(o) = serde_json::from_str::<Value>(overrides) {
+            json_merge(&base, &o)
+        } else {
+            base
+        };
+        serde_json::from_value(merged).unwrap()
+    }
+
+    fn json_merge(base: &Value, override_val: &Value) -> Value {
+        match (base, override_val) {
+            (Value::Object(a), Value::Object(b)) => {
+                let mut map = a.clone();
+                for (k, v) in b {
+                    map.insert(k.clone(), v.clone());
+                }
+                Value::Object(map)
+            }
+            (_, b) => b.clone(),
+        }
+    }
+
+    #[test]
+    fn test_manifest_deserialize_full() {
+        let m = make_manifest(r#"{"endpoint": "http://localhost:3000", "lab": true}"#);
+        assert_eq!(m.id, "test-plugin");
+        assert_eq!(m.endpoint.as_deref(), Some("http://localhost:3000"));
+        assert_eq!(m.lab, Some(true));
+    }
+
+    #[test]
+    fn test_manifest_missing_optional() {
+        let m = make_manifest("{}");
+        assert!(m.endpoint.is_none());
+        assert!(m.lab.is_none());
+        assert!(m.slots.is_none());
+    }
+
+    #[test]
+    fn test_get_tool_renderer_by_tool_name() {
+        let m = make_manifest(r#"{"slots": {"tool_result": {"renderer": "card"}}}"#);
+        let result = get_tool_renderer(&[m], "test_tool");
+        assert_eq!(result, Some("card".to_string()));
+    }
+
+    #[test]
+    fn test_get_tool_renderer_by_id() {
+        let m = make_manifest(r#"{"slots": {"tool_result": {"renderer": "table"}}}"#);
+        let result = get_tool_renderer(&[m], "test-plugin");
+        assert_eq!(result, Some("table".to_string()));
+    }
+
+    #[test]
+    fn test_get_tool_renderer_not_found() {
+        let m = make_manifest(r#"{"slots": {"tool_result": {"renderer": "card"}}}"#);
+        let result = get_tool_renderer(&[m], "nonexistent");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_get_tool_renderer_no_slots() {
+        let m = make_manifest("{}");
+        let result = get_tool_renderer(&[m], "test_tool");
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_save_and_load_plugin() {
+        let dir = tempfile::tempdir().unwrap();
+        let plugin_dir = dir.path().join("config").join("plugins");
+        std::fs::create_dir_all(&plugin_dir).unwrap();
+
+        let m = make_manifest("{}");
+        let path = plugin_dir.join("test-plugin.json");
+        let content = serde_json::to_string_pretty(&m).unwrap();
+        std::fs::write(&path, &content).unwrap();
+
+        let loaded: PluginManifest =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(loaded.id, m.id);
+        assert_eq!(loaded.version, m.version);
+    }
+}

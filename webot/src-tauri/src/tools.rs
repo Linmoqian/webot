@@ -249,3 +249,96 @@ fn execute_weather(args: Value) -> String {
     })
     .to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_weather_def_has_name() {
+        let def = weather_def();
+        assert_eq!(def["function"]["name"].as_str(), Some("weather"));
+    }
+
+    #[test]
+    fn test_roundtable_def_has_name() {
+        let def = roundtable_def();
+        assert_eq!(def["function"]["name"].as_str(), Some("roundtable"));
+    }
+
+    #[test]
+    fn test_builtin_tool_def_known() {
+        assert!(builtin_tool_def("weather").is_some());
+        assert!(builtin_tool_def("roundtable").is_some());
+    }
+
+    #[test]
+    fn test_builtin_tool_def_unknown() {
+        assert!(builtin_tool_def("custom_tool").is_none());
+    }
+
+    #[test]
+    fn test_is_builtin() {
+        assert!(is_builtin("weather"));
+        assert!(is_builtin("roundtable"));
+        assert!(!is_builtin("other"));
+    }
+
+    #[test]
+    fn test_execute_weather() {
+        let result = execute_weather(json!({"city": "北京"}));
+        let parsed: Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(parsed["city"].as_str(), Some("北京"));
+        assert!(parsed["temperature"].as_str().unwrap().ends_with("°C"));
+        assert!(parsed["condition"].as_str().is_some());
+        assert!(parsed["humidity"].as_str().unwrap().ends_with('%'));
+    }
+
+    #[test]
+    fn test_execute_weather_deterministic() {
+        let a = execute_weather(json!({"city": "上海"}));
+        let b = execute_weather(json!({"city": "上海"}));
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_get_tool_definitions_builtin() {
+        let defs = get_tool_definitions(
+            &["weather".to_string(), "roundtable".to_string()],
+            &[],
+        );
+        assert_eq!(defs.len(), 2);
+    }
+
+    #[test]
+    fn test_get_tool_definitions_unknown_ignored() {
+        let defs = get_tool_definitions(&["unknown".to_string()], &[]);
+        assert!(defs.is_empty());
+    }
+
+    #[test]
+    fn test_get_tool_definitions_plugin() {
+        let plugin = PluginManifest {
+            id: "my-tool".to_string(),
+            name: crate::plugins::LocalizedText {
+                zh: "测试".to_string(),
+                en: "Test".to_string(),
+            },
+            description: crate::plugins::LocalizedText {
+                zh: "描述".to_string(),
+                en: "Desc".to_string(),
+            },
+            version: "1.0".to_string(),
+            author: "test".to_string(),
+            icon: "code".to_string(),
+            plugin_type: "remote".to_string(),
+            tool: json!({"type":"function","function":{"name":"my_tool","parameters":{}}}),
+            endpoint: Some("http://localhost".to_string()),
+            lab: None,
+            slots: None,
+        };
+        let defs = get_tool_definitions(&["my-tool".to_string()], &[plugin]);
+        assert_eq!(defs.len(), 1);
+        assert_eq!(defs[0]["function"]["name"].as_str(), Some("my_tool"));
+    }
+}
