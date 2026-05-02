@@ -29,6 +29,24 @@ pub struct PageSlot {
     pub label: LocalizedText,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum PluginMode {
+    #[default]
+    Tool,
+    Task,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TaskSpec {
+    #[serde(default)]
+    pub persistent: bool,
+    #[serde(default)]
+    pub interruptible: bool,
+    #[serde(default)]
+    pub heartbeat: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginManifest {
     pub id: String,
@@ -45,6 +63,10 @@ pub struct PluginManifest {
     pub lab: Option<bool>,
     #[serde(default)]
     pub slots: Option<PluginSlots>,
+    #[serde(default)]
+    pub mode: PluginMode,
+    #[serde(default)]
+    pub task: Option<TaskSpec>,
 }
 
 pub fn get_tool_renderer(installed: &[PluginManifest], tool_name: &str) -> Option<String> {

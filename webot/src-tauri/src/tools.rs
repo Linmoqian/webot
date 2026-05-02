@@ -336,6 +336,8 @@ mod tests {
             endpoint: Some("http://localhost".to_string()),
             lab: None,
             slots: None,
+            mode: crate::plugins::PluginMode::Tool,
+            task: None,
         };
         let defs = get_tool_definitions(&["my-tool".to_string()], &[plugin]);
         assert_eq!(defs.len(), 1);
