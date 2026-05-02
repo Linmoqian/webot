@@ -250,7 +250,7 @@ interface PluginManifest {
   lab?: boolean;
 }
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<{ size?: string | number }>> = {
   cloud: Cloud,
   search: Search,
   code: Code,
@@ -890,15 +890,15 @@ function App() {
             <span className="badge">Beta</span>
           </div>
           <button className="qr-header-btn" onClick={openQrModal} title={t("tooltipWechatLogin")}
-            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "wechat-qr", name: { zh: "微信登录", en: "WeChat Login" }, description: { zh: t("tooltipWechatLogin"), en: t("tooltipWechatLogin") }, version: "-", author: "Webot Team", icon: "qr-code", type: "builtin", slots: undefined, lab: true } }); }}>
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "wechat-qr", name: { zh: "微信登录", en: "WeChat Login" }, description: { zh: t("tooltipWechatLogin"), en: t("tooltipWechatLogin") }, version: "-", author: "Webot Team", icon: "qr-code", type: "builtin", tool: {}, endpoint: null, slots: undefined, lab: true } }); }}>
             <QrCode size={20} />
           </button>
           <button className="settings-header-btn" onClick={openMarketplace} title={t("marketplaceTitle")}
-            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "marketplace", name: { zh: "插件市场", en: "Plugin Marketplace" }, description: { zh: t("marketplaceTitle"), en: t("marketplaceTitle") }, version: "-", author: "Webot Team", icon: "store", type: "builtin", slots: undefined, lab: true } }); }}>
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "marketplace", name: { zh: "插件市场", en: "Plugin Marketplace" }, description: { zh: t("marketplaceTitle"), en: t("marketplaceTitle") }, version: "-", author: "Webot Team", icon: "store", type: "builtin", tool: {}, endpoint: null, slots: undefined, lab: true } }); }}>
             <Store size={20} />
           </button>
           <button className={`settings-header-btn ${sidebarOpen ? "active" : ""}`} onClick={() => setSidebarOpen(!sidebarOpen)} title={t("sidebarTitle")}
-            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "sidebar", name: { zh: "插件面板", en: "Plugin Panel" }, description: { zh: t("sidebarTitle"), en: t("sidebarTitle") }, version: "-", author: "Webot Team", icon: "layout-dashboard", type: "builtin", slots: undefined, lab: true } }); }}>
+            onContextMenu={e => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, plugin: { id: "sidebar", name: { zh: "插件面板", en: "Plugin Panel" }, description: { zh: t("sidebarTitle"), en: t("sidebarTitle") }, version: "-", author: "Webot Team", icon: "layout-dashboard", type: "builtin", tool: {}, endpoint: null, slots: undefined, lab: true } }); }}>
             <LayoutDashboard size={20} />
           </button>
           {installedPlugins
