@@ -282,6 +282,8 @@ function App() {
   const [roundtablePanelOpen, setRoundtablePanelOpen] = useState(false);
   const [roundtableFlipped, setRoundtableFlipped] = useState<string | null>(null);
   const roundtableDragRef = useRef(false);
+  const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
+  const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1245,20 +1247,15 @@ function App() {
                           draggable={!roundtableRunning && !flipped}
                           onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
                           onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
+                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: i }); }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">
                               <div className="roundtable-role-card-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
                               <span className="roundtable-role-card-name">{role.name}</span>
                             </div>
-                            <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
+                            <div className="roundtable-role-card-back">
                               <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
-                              {!roundtableRunning && (
-                                <div className="roundtable-role-card-actions">
-                                  <button onClick={() => { setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableBackstage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableOffStage")}</button>
-                                  <button className="del" onClick={() => { setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableFlipped(null); }}>×</button>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1290,20 +1287,15 @@ function App() {
                           draggable={!roundtableRunning && !flipped}
                           onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
                           onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
+                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "backstage", index: i }); }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">
                               <div className="roundtable-role-card-avatar off">{role.name[0]}</div>
                               <span className="roundtable-role-card-name">{role.name}</span>
                             </div>
-                            <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
+                            <div className="roundtable-role-card-back">
                               <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
-                              {!roundtableRunning && (
-                                <div className="roundtable-role-card-actions">
-                                  <button onClick={() => { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableGoStage")}</button>
-                                  <button className="del" onClick={() => { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableFlipped(null); }}>×</button>
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1357,6 +1349,57 @@ function App() {
           </div>
         </div>
       )}
+
+      {roleContextMenu && (() => {
+        const list = roleContextMenu.source === "onstage" ? roundtableOnStage : roundtableBackstage;
+        const role = list[roleContextMenu.index];
+        if (!role) { setRoleContextMenu(null); return null; }
+        const onDelete = () => {
+          if (roleContextMenu.source === "onstage") {
+            setRoundtableOnStage(prev => prev.filter((_, j) => j !== roleContextMenu.index));
+          } else {
+            setRoundtableBackstage(prev => prev.filter((_, j) => j !== roleContextMenu.index));
+          }
+          setRoleContextMenu(null);
+        };
+        return (
+          <div className="context-menu-overlay" onClick={() => setRoleContextMenu(null)}>
+            <div className="context-menu" style={{ left: roleContextMenu.x, top: roleContextMenu.y }} onClick={e => e.stopPropagation()}>
+              <button className="context-menu-item" onClick={() => { setRoleEditing({ source: roleContextMenu.source, index: roleContextMenu.index }); setRoleContextMenu(null); }}>
+                {t("edit")}
+              </button>
+              <button className="context-menu-item danger" onClick={onDelete}>
+                {t("delete")}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {roleEditing && (() => {
+        const list = roleEditing.source === "onstage" ? roundtableOnStage : roundtableBackstage;
+        const role = list[roleEditing.index];
+        if (!role) { setRoleEditing(null); return null; }
+        const setter = roleEditing.source === "onstage" ? setRoundtableOnStage : setRoundtableBackstage;
+        const update = (field: string, value: string) => setter(prev => prev.map((r, j) => j === roleEditing.index ? { ...r, [field]: value } : r));
+        return (
+          <div className="context-menu-overlay" onClick={() => setRoleEditing(null)}>
+            <div className="role-edit-modal" onClick={e => e.stopPropagation()}>
+              <div className="role-edit-field">
+                <label>{t("roundtableRoleName")}</label>
+                <input value={role.name} onChange={e => update("name", e.target.value)} />
+              </div>
+              <div className="role-edit-field">
+                <label>{t("roundtableRoleTrait")}</label>
+                <input value={role.trait} onChange={e => update("trait", e.target.value)} />
+              </div>
+              <div className="role-edit-actions">
+                <button className="role-edit-save" onClick={() => setRoleEditing(null)}>{t("save")}</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {contextMenu && (() => {
         const isInstalledPlugin = installedPlugins.some(p => p.id === contextMenu.plugin.id);
