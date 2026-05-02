@@ -33,6 +33,7 @@ pub struct AppState {
     pub settings: Mutex<crate::config::Settings>,
     pub wechat_poll_handle: Mutex<Option<tokio::task::JoinHandle<()>>>,
     pub wechat_stop_tx: Mutex<Option<watch::Sender<bool>>>,
+    pub task_runtime: crate::task::TaskRuntime,
 }
 
 fn build_system_prompt_with_media(base_prompt: &str, media_dir: &Option<String>) -> String {
@@ -844,4 +845,14 @@ pub async fn start_roundtable(
         let _ = app.emit("roundtable-done", serde_json::json!({ "result": result }));
     });
     Ok(())
+}
+
+#[tauri::command]
+pub fn list_tasks(state: State<'_, AppState>) -> Result<Vec<crate::task::TaskInfo>, String> {
+    Ok(state.task_runtime.list())
+}
+
+#[tauri::command]
+pub fn cancel_task(state: State<'_, AppState>, task_id: String) -> Result<(), String> {
+    state.task_runtime.cancel(&task_id)
 }

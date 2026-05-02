@@ -3,6 +3,7 @@ mod config;
 mod llm;
 mod media;
 mod plugins;
+mod task;
 mod tools;
 
 use commands::AppState;
@@ -68,6 +69,7 @@ pub fn run() {
             settings: std::sync::Mutex::new(settings),
             wechat_poll_handle: std::sync::Mutex::new(None),
             wechat_stop_tx: std::sync::Mutex::new(None),
+            task_runtime: crate::task::TaskRuntime::new(),
         })
         .invoke_handler(tauri::generate_handler![
             commands::start_chat,
@@ -84,6 +86,8 @@ pub fn run() {
             commands::install_plugin,
             commands::uninstall_plugin,
             commands::start_roundtable,
+            commands::list_tasks,
+            commands::cancel_task,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
