@@ -42,3 +42,10 @@ CLAUDE.md
 AGENTS.md
 圆桌讨论_*
 docs/
+
+# Legacy Python files
+wechat_gateway.py
+weixin.py
+
+# Task tracking
+TODO.md
