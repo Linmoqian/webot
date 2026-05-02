@@ -285,6 +285,7 @@ function App() {
   const [roleContextMenu, setRoleContextMenu] = useState<{ x: number; y: number; source: "onstage" | "backstage"; index: number } | null>(null);
   const [roleEditing, setRoleEditing] = useState<{ source: "onstage" | "backstage"; index: number } | null>(null);
   const [dragGhost, setDragGhost] = useState<{ source: "onstage" | "backstage"; index: number; role: { name: string; trait: string }; x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1222,127 +1223,115 @@ function App() {
                   </button>
                 )}
               </div>
-              {roundtablePanelOpen && (
-                <div className="roundtable-panel-body">
-                  <div className="roundtable-role-rail" data-drop-zone="rail">
-                    {roundtableOnStage.map((role, i) => {
-                      const key = "on-" + i;
-                      const flipped = roundtableFlipped === key;
-                      const isDragging = dragGhost?.source === "onstage" && dragGhost?.index === i;
-                      return (
-                        <div
-                          key={key}
-                          className={"roundtable-role-card" + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
-                          style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
-                          onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
-                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "onstage", index: i }); }}
-                          onPointerDown={e => {
-                            if (roundtableRunning || flipped || e.button !== 0) return;
-                            const el = e.currentTarget as HTMLElement;
-                            const rect = el.getBoundingClientRect();
-                            const onMove = (ev: PointerEvent) => {
-                              const dx = ev.clientX - e.clientX;
-                              const dy = ev.clientY - e.clientY;
-                              if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-                                roundtableDragRef.current = true;
-                                setDragGhost({ source: "onstage", index: i, role, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
-                              }
-                              if (roundtableDragRef.current) {
-                                setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
-                              }
-                            };
-                            const onUp = (ev: PointerEvent) => {
-                              document.removeEventListener("pointermove", onMove);
-                              document.removeEventListener("pointerup", onUp);
-                              if (roundtableDragRef.current) {
-                                const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                                const stage = target?.closest('[data-drop-zone="stage"]');
-                                const rail = target?.closest('[data-drop-zone="rail"]');
-                                if (stage) {
-                                  setRoundtableOnStage(prev => prev.filter((_, j) => j !== i));
-                                  setRoundtableBackstage(prev => [...prev, role]);
+              {roundtablePanelOpen && (() => {
+                const allRoles = [
+                  ...roundtableOnStage.map((r, i) => ({ ...r, source: "onstage" as const, srcIdx: i })),
+                  ...roundtableBackstage.filter(r => r.name.trim()).map((r, i) => ({ ...r, source: "backstage" as const, srcIdx: i })),
+                ];
+                const dragFlatIdx = dragGhost ? allRoles.findIndex(r => r.source === dragGhost.source && r.srcIdx === dragGhost.index) : -1;
+                return (
+                  <div className="roundtable-panel-body">
+                    <div className="roundtable-role-rail" data-drop-zone="rail">
+                      {allRoles.map((item, flatIdx) => {
+                        const { source, srcIdx, name, trait } = item;
+                        const key = source + "-" + srcIdx;
+                        const flipped = roundtableFlipped === key;
+                        const isDragging = dragFlatIdx === flatIdx;
+                        const isOnstage = source === "onstage";
+                        const colorIdx = isOnstage ? srcIdx : roundtableOnStage.length + srcIdx;
+                        let shift = 0;
+                        if (dragGhost && dragFlatIdx >= 0 && dragOverIndex !== null && flatIdx !== dragFlatIdx) {
+                          if (dragFlatIdx < dragOverIndex && flatIdx > dragFlatIdx && flatIdx <= dragOverIndex) shift = -1;
+                          if (dragFlatIdx > dragOverIndex && flatIdx >= dragOverIndex && flatIdx < dragFlatIdx) shift = 1;
+                        }
+                        return (
+                          <div
+                            key={key}
+                            className={"roundtable-role-card" + (isOnstage ? "" : " backstage") + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
+                            style={{
+                              borderColor: isOnstage ? ROLE_COLORS[srcIdx % ROLE_COLORS.length] : "#ccc",
+                              "--shift": shift + "",
+                            } as React.CSSProperties}
+                            onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
+                            onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source, index: srcIdx }); }}
+                            onPointerDown={e => {
+                              if (roundtableRunning || flipped || e.button !== 0) return;
+                              const el = e.currentTarget as HTMLElement;
+                              const rect = el.getBoundingClientRect();
+                              const rail = el.parentElement!;
+                              const onMove = (ev: PointerEvent) => {
+                                const dx = ev.clientX - e.clientX;
+                                const dy = ev.clientY - e.clientY;
+                                if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
+                                  roundtableDragRef.current = true;
+                                  setDragGhost({ source, index: srcIdx, role: { name, trait }, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
                                 }
-                                setTimeout(() => setDragGhost(null), 0);
-                              }
-                              setTimeout(() => { roundtableDragRef.current = false; }, 0);
-                            };
-                            el.setPointerCapture(e.pointerId);
-                            document.addEventListener("pointermove", onMove);
-                            document.addEventListener("pointerup", onUp);
-                          }}
-                        >
-                          <div className="roundtable-role-card-inner">
-                            <div className="roundtable-role-card-front">
-                              <div className="roundtable-role-card-avatar" style={{ background: ROLE_COLORS[i % ROLE_COLORS.length] }}>{role.name[0] || "?"}</div>
-                              <span className="roundtable-role-card-name">{role.name}</span>
-                            </div>
-                            <div className="roundtable-role-card-back">
-                              <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
+                                if (roundtableDragRef.current) {
+                                  setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
+                                  const cards = rail.querySelectorAll(".roundtable-role-card:not(.dragging)");
+                                  let overIdx: number | null = null;
+                                  cards.forEach((card, ci) => {
+                                    const cr = card.getBoundingClientRect();
+                                    if (ev.clientX >= cr.left && ev.clientX <= cr.right) {
+                                      overIdx = ev.clientX < cr.left + cr.width / 2 ? ci : ci + 1;
+                                    }
+                                  });
+                                  if (overIdx !== null && dragFlatIdx >= 0) {
+                                    if (overIdx > dragFlatIdx) overIdx--;
+                                  }
+                                  setDragOverIndex(overIdx);
+                                }
+                              };
+                              const onUp = (ev: PointerEvent) => {
+                                document.removeEventListener("pointermove", onMove);
+                                document.removeEventListener("pointerup", onUp);
+                                if (roundtableDragRef.current) {
+                                  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+                                  const stage = target?.closest('[data-drop-zone="stage"]');
+                                  if (stage) {
+                                    if (source === "backstage") {
+                                      setRoundtableBackstage(prev => prev.filter((_, j) => j !== srcIdx));
+                                      setRoundtableOnStage(prev => [...prev, { name, trait }]);
+                                    } else {
+                                      setRoundtableOnStage(prev => prev.filter((_, j) => j !== srcIdx));
+                                      setRoundtableBackstage(prev => [...prev, { name, trait }]);
+                                    }
+                                  } else if (dragOverIndex !== null && dragFlatIdx >= 0 && dragOverIndex !== dragFlatIdx) {
+                                    const items = [...allRoles];
+                                    const [moved] = items.splice(dragFlatIdx, 1);
+                                    items.splice(dragOverIndex, 0, moved);
+                                    const newOn = items.filter(r => r.source === "onstage" || (source === "backstage" && r.source === "backstage" && items.indexOf(r) < roundtableOnStage.length));
+                                    const newOnStage = items.filter(r => r.source === "onstage").map(r => ({ name: r.name, trait: r.trait }));
+                                    const newOff = items.filter(r => r.source === "backstage").map(r => ({ name: r.name, trait: r.trait }));
+                                    const allBackstage = [...roundtableBackstage.filter(r => !r.name.trim()), ...newOff];
+                                    setRoundtableOnStage(newOnStage);
+                                    setRoundtableBackstage(allBackstage);
+                                  }
+                                  setTimeout(() => { setDragGhost(null); setDragOverIndex(null); }, 0);
+                                }
+                                setTimeout(() => { roundtableDragRef.current = false; }, 0);
+                              };
+                              el.setPointerCapture(e.pointerId);
+                              document.addEventListener("pointermove", onMove);
+                              document.addEventListener("pointerup", onUp);
+                            }}
+                          >
+                            <div className="roundtable-role-card-inner">
+                              <div className="roundtable-role-card-front">
+                                <div className={"roundtable-role-card-avatar" + (isOnstage ? "" : " off")} style={isOnstage ? { background: ROLE_COLORS[srcIdx % ROLE_COLORS.length] } : undefined}>{name[0] || "?"}</div>
+                                <span className="roundtable-role-card-name">{name}</span>
+                              </div>
+                              <div className="roundtable-role-card-back">
+                                <span className="roundtable-role-card-trait">{trait || t("roundtableRoleTrait")}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                    {roundtableBackstage.map((role, i) => {
-                      const key = "off-" + i;
-                      const flipped = roundtableFlipped === key;
-                      const isDragging = dragGhost?.source === "backstage" && dragGhost?.index === i;
-                      if (!role.name.trim()) return null;
-                      return (
-                        <div
-                          key={key}
-                          className={"roundtable-role-card backstage" + (flipped ? " flipped" : "") + (isDragging ? " dragging" : "")}
-                          onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
-                          onContextMenu={e => { if (roundtableRunning) return; e.preventDefault(); setRoleContextMenu({ x: e.clientX, y: e.clientY, source: "backstage", index: i }); }}
-                          onPointerDown={e => {
-                            if (roundtableRunning || flipped || e.button !== 0) return;
-                            const el = e.currentTarget as HTMLElement;
-                            const rect = el.getBoundingClientRect();
-                            const onMove = (ev: PointerEvent) => {
-                              const dx = ev.clientX - e.clientX;
-                              const dy = ev.clientY - e.clientY;
-                              if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-                                roundtableDragRef.current = true;
-                                setDragGhost({ source: "backstage", index: i, role, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
-                              }
-                              if (roundtableDragRef.current) {
-                                setDragGhost(prev => prev ? { ...prev, x: ev.clientX, y: ev.clientY } : prev);
-                              }
-                            };
-                            const onUp = (ev: PointerEvent) => {
-                              document.removeEventListener("pointermove", onMove);
-                              document.removeEventListener("pointerup", onUp);
-                              if (roundtableDragRef.current) {
-                                const target = document.elementFromPoint(ev.clientX, ev.clientY);
-                                const stage = target?.closest('[data-drop-zone="stage"]');
-                                if (stage) {
-                                  setRoundtableBackstage(prev => prev.filter((_, j) => j !== i));
-                                  setRoundtableOnStage(prev => [...prev, role]);
-                                }
-                                setTimeout(() => setDragGhost(null), 0);
-                              }
-                              setTimeout(() => { roundtableDragRef.current = false; }, 0);
-                            };
-                            el.setPointerCapture(e.pointerId);
-                            document.addEventListener("pointermove", onMove);
-                            document.addEventListener("pointerup", onUp);
-                          }}
-                        >
-                          <div className="roundtable-role-card-inner">
-                            <div className="roundtable-role-card-front">
-                              <div className="roundtable-role-card-avatar off">{role.name[0]}</div>
-                              <span className="roundtable-role-card-name">{role.name}</span>
-                            </div>
-                            <div className="roundtable-role-card-back">
-                              <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               <div className="roundtable-discussion" data-drop-zone="stage">
                 {roundtableSpeakers.length === 0 && !roundtableResult && (
                   <div className="roundtable-empty">

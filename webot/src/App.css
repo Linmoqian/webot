@@ -1571,25 +1571,9 @@ textarea::placeholder {
   border: 1px solid #e5e5e5;
   border-left: 3px solid #ccc;
   position: relative;
-}
-
-.roundtable-role-card.empty {
-  cursor: default;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 8px;
-  border-style: dashed;
-}
-
-.roundtable-role-card.empty .roundtable-role-card-edit {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 12px;
-  width: 100%;
-  text-align: center;
-  padding: 0;
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s, box-shadow 0.15s;
+  --shift: 0;
+  transform: translateX(calc(var(--shift) * 128px));
 }
 
 .roundtable-role-card.backstage { background: #fafafa; }
@@ -1597,8 +1581,8 @@ textarea::placeholder {
 .roundtable-role-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
 .roundtable-role-card.dragging {
-  opacity: 0.3;
-  transform: scale(0.9);
+  opacity: 0.25;
+  transform: scale(0.85);
   transition: opacity 0.2s, transform 0.2s;
 }
 
