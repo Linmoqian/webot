@@ -1493,41 +1493,64 @@ textarea::placeholder {
   overflow: hidden;
 }
 
-/* Collapsible panel toggle */
-.roundtable-panel-toggle {
+/* Role zones */
+.roundtable-roles-section {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 20px;
+  flex-direction: column;
   border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.15s;
 }
 
-.roundtable-panel-toggle:hover { background: #fafafa; }
+.roundtable-zone {
+  padding: 0 20px;
+}
 
-.roundtable-panel-arrow {
+.roundtable-zone + .roundtable-zone {
+  border-top: 1px solid #f0f0f0;
+}
+
+.roundtable-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 2px;
+}
+
+.roundtable-zone-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f97316;
+  flex-shrink: 0;
+}
+
+.roundtable-zone-dot.muted { background: #ccc; }
+
+.roundtable-zone-label {
   font-size: 11px;
+  font-weight: 600;
   color: #999;
-  width: 14px;
+  letter-spacing: 0.3px;
+}
+
+.roundtable-zone-count {
+  font-size: 10px;
+  color: #aaa;
+  background: #f5f5f5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  min-width: 16px;
   text-align: center;
 }
 
-.roundtable-panel-summary {
-  font-size: 12px;
-  color: #888;
-}
-
-.roundtable-panel-add {
+.roundtable-zone-add {
   margin-left: auto;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border: 1px dashed #ccc;
-  border-radius: 6px;
+  border-radius: 5px;
   background: none;
   color: #999;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1535,154 +1558,148 @@ textarea::placeholder {
   transition: all 0.15s;
 }
 
-.roundtable-panel-add:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
+.roundtable-zone-add:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
 
-/* Panel body */
-.roundtable-panel-body {
-  border-bottom: 1px solid #f0f0f0;
-  animation: fadeIn 0.15s ease;
-}
-
-/* Horizontal role rail */
-.roundtable-role-rail {
+.roundtable-zone-rail {
   display: flex;
-  align-items: stretch;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 4px 0 10px;
   overflow-x: auto;
+  min-height: 50px;
+  align-items: flex-start;
   scrollbar-width: thin;
-  min-height: 100px;
-  transition: background 0.15s;
 }
 
-.roundtable-role-rail::-webkit-scrollbar { height: 4px; }
-.roundtable-role-rail::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+.roundtable-zone-rail::-webkit-scrollbar { height: 3px; }
+.roundtable-zone-rail::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
 
-.roundtable-role-rail.drag-over { background: #fff7ed; }
+.roundtable-zone-empty {
+  font-size: 12px;
+  color: #bbb;
+  padding: 6px 0;
+  user-select: none;
+}
 
-/* Flip cards */
+/* Role cards */
 .roundtable-role-card {
-  width: 120px;
-  height: 88px;
-  perspective: 600px;
   flex-shrink: 0;
-  cursor: pointer;
+  padding: 8px 12px 8px 10px;
   border-radius: 10px;
   border: 1px solid #e5e5e5;
   border-left: 3px solid #ccc;
-  position: relative;
-  transition: box-shadow 0.15s;
-}
-
-.roundtable-role-card.backstage { background: #fafafa; }
-
-.roundtable-role-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-
-.roundtable-role-card.dragging {
-  visibility: hidden;
-}
-
-/* Insertion gap indicator */
-.roundtable-role-rail .drop-gap {
-  width: 0;
-  flex-shrink: 0;
-  transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.roundtable-role-rail .drop-gap.active {
-  width: 128px;
-}
-
-.roundtable-role-card-inner {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.35s ease;
-}
-
-.roundtable-role-card.flipped .roundtable-role-card-inner {
-  transform: rotateY(180deg);
-}
-
-.roundtable-role-card-front,
-.roundtable-role-card-back {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s;
+  animation: cardEnter 0.25s cubic-bezier(0.2, 0, 0, 1);
+  background: #fafafa;
+}
+
+.roundtable-role-card.onstage {
+  background: white;
+  border-color: #e5e5e5;
+}
+
+.roundtable-role-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.roundtable-role-card:hover .roundtable-role-action,
+.roundtable-role-card:hover .roundtable-role-delete {
+  opacity: 1;
+}
+
+.roundtable-role-action {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #999;
+  cursor: pointer;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  border-radius: 10px;
-  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 1;
+  padding: 0;
 }
 
-.roundtable-role-card-back {
-  transform: rotateY(180deg);
-  padding: 6px 8px;
-  gap: 4px;
-  align-items: stretch;
-  justify-content: flex-start;
-  overflow-y: auto;
-  scrollbar-width: thin;
+.roundtable-role-action:hover { background: #f97316; color: white; border-color: #f97316; }
+
+.roundtable-role-delete {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #e5e5e5;
+  background: white;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  z-index: 1;
+  padding: 0;
 }
 
-.roundtable-role-card-back::-webkit-scrollbar { width: 3px; }
-.roundtable-role-card-back::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+.roundtable-role-delete:hover { background: #ef4444; color: white; border-color: #ef4444; }
 
-.roundtable-role-card-trait {
-  font-size: 11px;
-  color: #666;
-  line-height: 1.5;
-  word-break: break-all;
-  flex: 1;
-}
-
-.roundtable-role-card-avatar {
-  width: 34px;
-  height: 34px;
+.roundtable-role-avatar {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.roundtable-role-card-avatar.off { background: #bbb; }
+.roundtable-role-avatar.off { background: #bbb; }
 
-.roundtable-role-card-name {
+.roundtable-role-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.roundtable-role-name {
   font-size: 12px;
   font-weight: 600;
   color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 108px;
-  text-align: center;
+  max-width: 90px;
 }
 
-.roundtable-role-card-edit {
-  width: 100%;
-  padding: 4px 6px;
-  border: 1px solid #e5e5e5;
-  border-radius: 4px;
-  font-size: 11px;
-  outline: none;
-  height: 22px;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-
-.roundtable-role-card-edit:focus { border-color: #f97316; }
-
-.roundtable-role-card-edit.trait {
-  color: #666;
+.roundtable-role-trait-text {
   font-size: 10px;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: scale(0.88) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 .roundtable-discussion {
@@ -1695,46 +1712,6 @@ textarea::placeholder {
 .roundtable-discussion.stage-drop-active {
   background: #f0fdf4;
   box-shadow: inset 0 2px 8px rgba(34,197,94,0.1);
-}
-
-/* Drag ghost */
-.drag-ghost {
-  position: fixed;
-  z-index: 9999;
-  pointer-events: none;
-  width: 120px;
-  height: 88px;
-  border-radius: 10px;
-  border: 1px solid #f97316;
-  background: white;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transform: scale(1.08) rotate(-2deg);
-  transition: transform 0.1s ease;
-  opacity: 0.95;
-}
-
-.drag-ghost-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: #f97316;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.drag-ghost-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
 }
 
 .roundtable-empty {
@@ -2220,27 +2197,27 @@ textarea::placeholder {
   .roundtable-page-header { border-color: #2a2a2a; }
   .roundtable-page-header h3 { color: #e5e5e5; }
   .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-panel-toggle { border-color: #2a2a2a; }
-  .roundtable-panel-toggle:hover { background: #222; }
-  .roundtable-panel-summary { color: #666; }
-  .roundtable-panel-add { border-color: #444; color: #666; }
-  .roundtable-panel-add:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
-  .roundtable-panel-body { border-color: #2a2a2a; }
-  .roundtable-role-rail { scrollbar-color: #444 transparent; }
-  .roundtable-role-rail::-webkit-scrollbar-thumb { background: #444; }
-  .roundtable-role-rail.drag-over { background: #2a1f0f; }
-  .roundtable-role-card { border-color: #333; }
-  .roundtable-role-card.empty { border-color: #444; }
-  .roundtable-role-card.empty .roundtable-role-card-edit { color: #e5e5e5; }
-  .roundtable-role-card.backstage { background: #222; }
-  .roundtable-role-card-back { background: #1a1a1a; }
-  .roundtable-role-card-trait { color: #999; }
-  .roundtable-role-card-avatar.off { background: #444; }
-  .roundtable-role-card-name { color: #e5e5e5; }
-  .roundtable-role-card-edit { background: #222; border-color: #333; color: #e5e5e5; }
+  .roundtable-roles-section { border-color: #2a2a2a; }
+  .roundtable-zone + .roundtable-zone { border-color: #2a2a2a; }
+  .roundtable-zone-dot.muted { background: #555; }
+  .roundtable-zone-label { color: #666; }
+  .roundtable-zone-count { background: #2a2a2a; color: #666; }
+  .roundtable-zone-add { border-color: #444; color: #666; }
+  .roundtable-zone-add:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
+  .roundtable-zone-rail { scrollbar-color: #444 transparent; }
+  .roundtable-zone-rail::-webkit-scrollbar-thumb { background: #444; }
+  .roundtable-zone-empty { color: #555; }
+  .roundtable-role-card { border-color: #333; background: #222; }
+  .roundtable-role-card.onstage { background: #1a1a1a; }
+  .roundtable-role-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
+  .roundtable-role-action { background: #2a2a2a; border-color: #444; color: #999; }
+  .roundtable-role-action:hover { background: #f97316; color: white; border-color: #f97316; }
+  .roundtable-role-delete { background: #2a2a2a; border-color: #444; color: #999; }
+  .roundtable-role-delete:hover { background: #ef4444; color: white; border-color: #ef4444; }
+  .roundtable-role-avatar.off { background: #444; }
+  .roundtable-role-name { color: #e5e5e5; }
+  .roundtable-role-trait-text { color: #777; }
   .roundtable-discussion.stage-drop-active { background: #0f2a0f; box-shadow: inset 0 2px 8px rgba(34,197,94,0.05); }
-  .drag-ghost { background: #222; border-color: #f97316; }
-  .drag-ghost-name { color: #e5e5e5; }
   .roundtable-empty p { color: #555; }
   .roundtable-speaker-card { border-color: #333; }
   .roundtable-speaker-name { color: #e5e5e5; }
