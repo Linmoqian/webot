@@ -1210,7 +1210,13 @@ function App() {
                   {t("roundtableOnStage")} {roundtableOnStage.length} · {t("roundtableBackstage")} {roundtableBackstage.length}
                 </span>
                 {!roundtableRunning && (
-                  <button className="roundtable-panel-add" onClick={e => { e.stopPropagation(); setRoundtableBackstage(prev => [...prev, { name: "", trait: "" }]); setRoundtablePanelOpen(true); }}>
+                  <button className="roundtable-panel-add" onClick={e => {
+                    e.stopPropagation();
+                    setRoundtableBackstage(prev => [...prev, { name: "", trait: "" }]);
+                    setRoundtablePanelOpen(true);
+                    const idx = roundtableBackstage.length;
+                    setRoleEditing({ source: "backstage", index: idx });
+                  }}>
                     +
                   </button>
                 )}
@@ -1264,22 +1270,7 @@ function App() {
                     {roundtableBackstage.map((role, i) => {
                       const key = "off-" + i;
                       const flipped = roundtableFlipped === key;
-                      if (!role.name.trim()) {
-                        return (
-                          <div key={key} className="roundtable-role-card empty">
-                            <input
-                              className="roundtable-role-card-edit"
-                              type="text"
-                              placeholder={t("roundtableRoleName")}
-                              value={role.name}
-                              onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                              disabled={roundtableRunning}
-                              autoFocus
-                              onKeyDown={e => { if (e.key === "Enter" && role.name.trim()) { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); } }}
-                            />
-                          </div>
-                        );
-                      }
+                      if (!role.name.trim()) return null;
                       return (
                         <div
                           key={key}
@@ -1382,19 +1373,26 @@ function App() {
         if (!role) { setRoleEditing(null); return null; }
         const setter = roleEditing.source === "onstage" ? setRoundtableOnStage : setRoundtableBackstage;
         const update = (field: string, value: string) => setter(prev => prev.map((r, j) => j === roleEditing.index ? { ...r, [field]: value } : r));
+        const close = () => {
+          const current = (roleEditing.source === "onstage" ? roundtableOnStage : roundtableBackstage)[roleEditing.index];
+          if (current && !current.name.trim()) {
+            setter(prev => prev.filter((_, j) => j !== roleEditing.index));
+          }
+          setRoleEditing(null);
+        };
         return (
-          <div className="context-menu-overlay" onClick={() => setRoleEditing(null)}>
+          <div className="context-menu-overlay" onClick={close}>
             <div className="role-edit-modal" onClick={e => e.stopPropagation()}>
               <div className="role-edit-field">
                 <label>{t("roundtableRoleName")}</label>
-                <input value={role.name} onChange={e => update("name", e.target.value)} />
+                <input value={role.name} onChange={e => update("name", e.target.value)} autoFocus onKeyDown={e => { if (e.key === "Enter") close(); }} />
               </div>
               <div className="role-edit-field">
                 <label>{t("roundtableRoleTrait")}</label>
-                <input value={role.trait} onChange={e => update("trait", e.target.value)} />
+                <input value={role.trait} onChange={e => update("trait", e.target.value)} onKeyDown={e => { if (e.key === "Enter") close(); }} />
               </div>
               <div className="role-edit-actions">
-                <button className="role-edit-save" onClick={() => setRoleEditing(null)}>{t("save")}</button>
+                <button className="role-edit-save" onClick={close}>{t("save")}</button>
               </div>
             </div>
           </div>
