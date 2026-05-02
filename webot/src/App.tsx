@@ -281,6 +281,7 @@ function App() {
   const [roundtableResult, setRoundtableResult] = useState<string | null>(null);
   const [roundtablePanelOpen, setRoundtablePanelOpen] = useState(false);
   const [roundtableFlipped, setRoundtableFlipped] = useState<string | null>(null);
+  const roundtableDragRef = useRef(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; plugin: PluginManifest } | null>(null);
   const [showPluginInfo, setShowPluginInfo] = useState<PluginManifest | null>(null);
   const [wechatMessages, setWechatMessages] = useState<{ from: string; text: string; time: string }[]>([]);
@@ -1242,8 +1243,8 @@ function App() {
                           className={"roundtable-role-card" + (flipped ? " flipped" : "")}
                           style={{ borderColor: ROLE_COLORS[i % ROLE_COLORS.length] }}
                           draggable={!roundtableRunning && !flipped}
-                          onDragStart={e => { e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
-                          onClick={() => setRoundtableFlipped(prev => prev === key ? null : key)}
+                          onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "onstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                          onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">
@@ -1300,8 +1301,8 @@ function App() {
                           key={key}
                           className={"roundtable-role-card backstage" + (flipped ? " flipped" : "")}
                           draggable={!roundtableRunning && !flipped}
-                          onDragStart={e => { e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
-                          onClick={() => setRoundtableFlipped(prev => prev === key ? null : key)}
+                          onDragStart={e => { roundtableDragRef.current = true; e.dataTransfer.setData("text/plain", "backstage:" + i); e.dataTransfer.effectAllowed = "move"; }}
+                          onClick={() => { if (roundtableDragRef.current) { roundtableDragRef.current = false; return; } setRoundtableFlipped(prev => prev === key ? null : key); }}
                         >
                           <div className="roundtable-role-card-inner">
                             <div className="roundtable-role-card-front">

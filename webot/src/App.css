@@ -1546,12 +1546,12 @@ textarea::placeholder {
 /* Horizontal role rail */
 .roundtable-role-rail {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
   padding: 10px 20px;
   overflow-x: auto;
   scrollbar-width: thin;
-  min-height: 64px;
+  min-height: 100px;
   transition: background 0.15s;
 }
 
@@ -1562,8 +1562,8 @@ textarea::placeholder {
 
 /* Flip cards */
 .roundtable-role-card {
-  width: 90px;
-  height: 52px;
+  width: 120px;
+  height: 88px;
   perspective: 600px;
   flex-shrink: 0;
   cursor: pointer;
@@ -1625,19 +1625,26 @@ textarea::placeholder {
 
 .roundtable-role-card-back {
   transform: rotateY(180deg);
-  padding: 4px 6px;
-  gap: 3px;
+  padding: 6px 8px;
+  gap: 4px;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
+.roundtable-role-card-back::-webkit-scrollbar { width: 3px; }
+.roundtable-role-card-back::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+
 .roundtable-role-card-avatar {
-  width: 26px;
-  height: 26px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -1645,25 +1652,26 @@ textarea::placeholder {
 .roundtable-role-card-avatar.off { background: #bbb; }
 
 .roundtable-role-card-name {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 80px;
+  max-width: 108px;
   text-align: center;
 }
 
 .roundtable-role-card-edit {
   width: 100%;
-  padding: 3px 6px;
+  padding: 4px 6px;
   border: 1px solid #e5e5e5;
   border-radius: 4px;
   font-size: 11px;
   outline: none;
-  height: 20px;
+  height: 22px;
   box-sizing: border-box;
+  flex-shrink: 0;
 }
 
 .roundtable-role-card-edit:focus { border-color: #f97316; }
