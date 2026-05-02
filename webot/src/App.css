@@ -1482,125 +1482,9 @@ textarea::placeholder {
 .roundtable-page-body {
   flex: 1;
   display: flex;
-  gap: 0;
+  flex-direction: column;
   overflow: hidden;
 }
-
-.roundtable-side {
-  width: 280px;
-  flex-shrink: 0;
-  padding: 16px;
-  border-right: 1px solid #f0f0f0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  overflow-y: auto;
-}
-
-.roundtable-side-title {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #999;
-}
-
-.roundtable-role-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.roundtable-role-card {
-  position: relative;
-  border: 1px solid #e5e5e5;
-  border-radius: 10px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.role-card-delete {
-  position: absolute;
-  top: 4px;
-  right: 6px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #ccc;
-  font-size: 11px;
-  padding: 2px;
-  line-height: 1;
-  border-radius: 4px;
-}
-
-.role-card-delete:hover { color: #e55; }
-
-.roundtable-role-name-input {
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-  height: 32px;
-  box-sizing: border-box;
-}
-
-.roundtable-role-name-input:focus { border-color: #f97316; }
-
-.roundtable-role-trait-input {
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #666;
-  outline: none;
-  height: 32px;
-  box-sizing: border-box;
-}
-
-.roundtable-role-trait-input:focus { border-color: #f97316; }
-
-.roundtable-stage-btn {
-  width: 100%;
-  padding: 6px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: white;
-  font-size: 13px;
-  font-weight: 600;
-  color: #f97316;
-  cursor: pointer;
-  height: 32px;
-  box-sizing: border-box;
-  transition: all 0.15s;
-}
-
-.roundtable-stage-btn:hover:not(:disabled) {
-  background: #f97316;
-  color: white;
-  border-color: #f97316;
-}
-
-.roundtable-stage-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.roundtable-add-role-btn {
-  width: 100%;
-  padding: 8px;
-  border: 1px dashed #ddd;
-  border-radius: 10px;
-  background: none;
-  color: #999;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.roundtable-add-role-btn:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
 
 .roundtable-main {
   flex: 1;
@@ -1609,75 +1493,203 @@ textarea::placeholder {
   overflow: hidden;
 }
 
-.roundtable-stage-roster {
-  padding: 12px 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.roundtable-stage-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.roundtable-stage-empty {
-  font-size: 12px;
-  color: #bbb;
-  padding: 4px 0;
-}
-
-.roundtable-stage-chip {
+/* Collapsible panel toggle */
+.roundtable-panel-toggle {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  border-left: 3px solid #ccc;
+  padding: 8px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
 }
 
-.roundtable-stage-avatar {
-  width: 26px;
-  height: 26px;
+.roundtable-panel-toggle:hover { background: #fafafa; }
+
+.roundtable-panel-arrow {
+  font-size: 11px;
+  color: #999;
+  width: 14px;
+  text-align: center;
+}
+
+.roundtable-panel-summary {
+  font-size: 12px;
+  color: #888;
+}
+
+.roundtable-panel-add {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border: 1px dashed #ccc;
+  border-radius: 6px;
+  background: none;
+  color: #999;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.roundtable-panel-add:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
+
+/* Panel body */
+.roundtable-panel-body {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: fadeIn 0.15s ease;
+}
+
+.roundtable-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roundtable-panel-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #999;
+}
+
+/* On-stage chips */
+.roundtable-panel-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.roundtable-panel-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e5e5;
+  border-left: 3px solid;
+}
+
+.roundtable-panel-chip.onstage { background: #fafffe; }
+
+.roundtable-panel-chip-avatar {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
 }
 
-.roundtable-stage-info {
+.roundtable-panel-chip-info {
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
-.roundtable-stage-name {
+.roundtable-panel-chip-name {
   font-size: 12px;
   font-weight: 600;
   color: #333;
 }
 
-.roundtable-stage-trait {
+.roundtable-panel-chip-trait {
   font-size: 10px;
   color: #888;
 }
 
-.roundtable-offstage-btn {
+.roundtable-panel-chip-action {
   background: none;
   border: none;
   cursor: pointer;
   color: #bbb;
-  font-size: 11px;
-  padding: 2px 6px;
+  font-size: 13px;
+  padding: 2px 4px;
   border-radius: 4px;
-  white-space: nowrap;
+  line-height: 1;
 }
 
-.roundtable-offstage-btn:hover { color: #e55; background: #fef2f2; }
+.roundtable-panel-chip-action:hover { color: #e55; background: #fef2f2; }
+
+/* Backstage role rows */
+.roundtable-panel-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roundtable-panel-role-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.roundtable-panel-role-input {
+  padding: 5px 10px;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 12px;
+  outline: none;
+  height: 28px;
+  box-sizing: border-box;
+  width: 120px;
+  transition: border-color 0.2s;
+}
+
+.roundtable-panel-role-input:focus { border-color: #f97316; }
+
+.roundtable-panel-role-input.trait {
+  flex: 1;
+  color: #666;
+}
+
+.roundtable-panel-role-up {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  color: #f97316;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+
+.roundtable-panel-role-up:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
+.roundtable-panel-role-up:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.roundtable-panel-role-del {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: #ccc;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.roundtable-panel-role-del:hover { color: #e55; background: #fef2f2; }
 
 .roundtable-discussion {
   flex: 1;
@@ -2033,24 +2045,24 @@ textarea::placeholder {
   .roundtable-page-header { border-color: #2a2a2a; }
   .roundtable-page-header h3 { color: #e5e5e5; }
   .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-side { border-color: #2a2a2a; }
-  .roundtable-side-title { color: #666; }
-  .roundtable-role-card { border-color: #333; }
-  .role-card-delete { color: #555; }
-  .role-card-delete:hover { color: #f87171; }
-  .roundtable-role-name-input { background: #222; border-color: #333; color: #e5e5e5; }
-  .roundtable-role-trait-input { background: #222; border-color: #333; color: #aaa; }
-  .roundtable-stage-btn { background: #222; color: #fb923c; border-color: #444; }
-  .roundtable-stage-btn:hover:not(:disabled) { background: #f97316; color: white; border-color: #f97316; }
-  .roundtable-add-role-btn { border-color: #444; color: #777; }
-  .roundtable-add-role-btn:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
-  .roundtable-stage-roster { border-color: #2a2a2a; }
-  .roundtable-stage-empty { color: #555; }
-  .roundtable-stage-chip { background: #222; border-color: transparent; }
-  .roundtable-stage-name { color: #e5e5e5; }
-  .roundtable-stage-trait { color: #777; }
-  .roundtable-offstage-btn { color: #666; }
-  .roundtable-offstage-btn:hover { color: #f87171; background: #3a1a1a; }
+  .roundtable-panel-toggle { border-color: #2a2a2a; }
+  .roundtable-panel-toggle:hover { background: #222; }
+  .roundtable-panel-summary { color: #666; }
+  .roundtable-panel-add { border-color: #444; color: #666; }
+  .roundtable-panel-add:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
+  .roundtable-panel-body { border-color: #2a2a2a; }
+  .roundtable-panel-label { color: #555; }
+  .roundtable-panel-chip { background: #222; border-color: #333; }
+  .roundtable-panel-chip.onstage { background: #1a2a1a; }
+  .roundtable-panel-chip-name { color: #e5e5e5; }
+  .roundtable-panel-chip-trait { color: #666; }
+  .roundtable-panel-chip-action { color: #555; }
+  .roundtable-panel-chip-action:hover { color: #f87171; background: #3a1a1a; }
+  .roundtable-panel-role-input { background: #222; border-color: #333; color: #e5e5e5; }
+  .roundtable-panel-role-up { background: #222; border-color: #444; }
+  .roundtable-panel-role-up:hover:not(:disabled) { background: #f97316; border-color: #f97316; }
+  .roundtable-panel-role-del { color: #444; }
+  .roundtable-panel-role-del:hover { color: #f87171; background: #3a1a1a; }
   .roundtable-empty p { color: #555; }
   .roundtable-speaker-card { border-color: #333; }
   .roundtable-speaker-name { color: #e5e5e5; }
