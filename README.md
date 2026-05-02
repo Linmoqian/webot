@@ -12,7 +12,8 @@ npm install
 npm run tauri dev
 ```
 
-首次运行前复制 `config.json` 并填入你的 LLM API 配置。
+效果图
+![alt text](figures/image.png)
 
 ## 技术栈
 
