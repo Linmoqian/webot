@@ -1636,6 +1636,14 @@ textarea::placeholder {
 .roundtable-role-card-back::-webkit-scrollbar { width: 3px; }
 .roundtable-role-card-back::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
 
+.roundtable-role-card-trait {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+  word-break: break-all;
+  flex: 1;
+}
+
 .roundtable-role-card-avatar {
   width: 34px;
   height: 34px;
@@ -2083,6 +2091,7 @@ textarea::placeholder {
   .roundtable-role-card.empty .roundtable-role-card-edit { color: #e5e5e5; }
   .roundtable-role-card.backstage { background: #222; }
   .roundtable-role-card-back { background: #1a1a1a; }
+  .roundtable-role-card-trait { color: #999; }
   .roundtable-role-card-avatar.off { background: #444; }
   .roundtable-role-card-name { color: #e5e5e5; }
   .roundtable-role-card-edit { background: #222; border-color: #333; color: #e5e5e5; }

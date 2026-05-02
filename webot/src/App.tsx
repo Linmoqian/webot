@@ -1252,20 +1252,7 @@ function App() {
                               <span className="roundtable-role-card-name">{role.name}</span>
                             </div>
                             <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
-                              <input
-                                className="roundtable-role-card-edit"
-                                value={role.name}
-                                placeholder={t("roundtableRoleName")}
-                                onChange={e => setRoundtableOnStage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                                disabled={roundtableRunning}
-                              />
-                              <input
-                                className="roundtable-role-card-edit trait"
-                                value={role.trait}
-                                placeholder={t("roundtableRoleTrait")}
-                                onChange={e => setRoundtableOnStage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
-                                disabled={roundtableRunning}
-                              />
+                              <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
                               {!roundtableRunning && (
                                 <div className="roundtable-role-card-actions">
                                   <button onClick={() => { setRoundtableOnStage(prev => prev.filter((_, j) => j !== i)); setRoundtableBackstage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableOffStage")}</button>
@@ -1310,20 +1297,7 @@ function App() {
                               <span className="roundtable-role-card-name">{role.name}</span>
                             </div>
                             <div className="roundtable-role-card-back" onClick={e => e.stopPropagation()}>
-                              <input
-                                className="roundtable-role-card-edit"
-                                value={role.name}
-                                placeholder={t("roundtableRoleName")}
-                                onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, name: e.target.value } : r))}
-                                disabled={roundtableRunning}
-                              />
-                              <input
-                                className="roundtable-role-card-edit trait"
-                                value={role.trait}
-                                placeholder={t("roundtableRoleTrait")}
-                                onChange={e => setRoundtableBackstage(prev => prev.map((r, j) => j === i ? { ...r, trait: e.target.value } : r))}
-                                disabled={roundtableRunning}
-                              />
+                              <span className="roundtable-role-card-trait">{role.trait || t("roundtableRoleTrait")}</span>
                               {!roundtableRunning && (
                                 <div className="roundtable-role-card-actions">
                                   <button onClick={() => { setRoundtableBackstage(prev => prev.filter((_, j) => j !== i)); setRoundtableOnStage(prev => [...prev, role]); setRoundtableFlipped(null); }}>{t("roundtableGoStage")}</button>
