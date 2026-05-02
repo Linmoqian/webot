@@ -5,3 +5,10 @@
 - [x] 修复角色卡独立翻转与窗口级拖动
 - [x] 优化圆桌窗口尺寸与内容自适应
 - [x] 支持角色下桌并优化圆桌主题与添加角色布局
+- [x] TaskRuntime 抽象层：spawn/cancel/list + TaskContext 进度汇报 + 停止信号
+- [x] PluginManifest 扩展：PluginMode(Tool/Task) + TaskSpec(persistent/interruptible/heartbeat)
+- [ ] SQLite 任务持久化：任务状态持久化，崩溃恢复
+- [ ] 前端 TaskPanel 组件：运行中任务列表 + 进度条 + 暂停/恢复/取消
+- [ ] 将微信监听迁移到 TaskRuntime（验证抽象可行性）
+- [ ] 机器人控制插件
+- [ ] 24h 自动化小说创作插件
