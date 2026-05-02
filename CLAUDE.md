@@ -15,23 +15,41 @@ npm run dev              # Vite 开发服务器（端口 1420）
 npm run tauri dev        # Tauri 完整开发模式（前端 + Rust 后端）
 npm run build            # TypeScript 编译 + Vite 构建
 npm run tauri build      # Tauri 生产构建
+npm test                 # 前端测试（vitest）
+npm run test:watch       # 前端测试监听模式
+npm run test:rust        # Rust 后端测试（cargo test）
+npm run test:all         # 前后端测试全部运行
 ```
 
-首次运行前复制 `config.json` 并填入 LLM API 配置。无测试框架。
+首次运行前复制 `config.json` 并填入 LLM API 配置。
 
 ## Architecture
 
 ```
-webot/                            # 主应用目录
+webot/                            # 主应用目录（Tauri 子项目）
 ├── src/                          # React 前端
-│   ├── App.tsx                   → 主界面（聊天 + 微信 + 设置 + 插件市场 + 圆桌会议）
+│   ├── App.tsx                   → 布局编排（状态管理 + 组件组合）
 │   ├── App.css                   → CSS 主题通过 [data-theme="dark"] 切换
 │   ├── i18n.tsx                  → 国际化 Context（中/英），useI18n hook
 │   ├── hooks/useChatStream.ts    → SSE 事件流 hook，管理消息状态
+│   ├── types.ts                  → 共享类型定义（Message, PluginManifest, RoundtableRole）
+│   ├── constants.ts              → 角色颜色、图标映射、主题切换
+│   ├── utils/                    → 工具函数（image.ts, roundtable.ts）
+│   ├── components/               # 功能组件（从 App.tsx 拆分）
+│   │   ├── Header.tsx            → 顶部导航栏
+│   │   ├── ChatPanel.tsx         → 聊天面板
+│   │   ├── Markdown.tsx          → Markdown 渲染
+│   │   ├── MarketplaceModal.tsx  → 插件市场
+│   │   ├── PluginSidebar.tsx     → 插件侧边栏
+│   │   ├── RoundtablePage.tsx    → 圆桌会议全屏页面
+│   │   ├── SettingsModal.tsx     → 设置弹窗
+│   │   ├── ToolResultCard.tsx    → 工具结果卡片
+│   │   ├── WeChatQRModal.tsx     → 微信扫码弹窗
+│   │   └── WeChatLogModal.tsx    → 微信消息日志
 │   └── main.tsx                  → I18nProvider 包裹 App
 ├── src-tauri/                    # Rust 后端（Tauri 2.x）
 │   └── src/
-│       ├── lib.rs                → 注册命令和 AppState
+│       ├── lib.rs                → 注册命令、AppState、系统托盘
 │       ├── commands.rs           → 所有 Tauri 命令（含圆桌会议、插件管理）
 │       ├── llm.rs                → stream_and_emit + call_llm + stream_llm + chat_with_tools
 │       ├── config.rs             → Settings 结构体 + config.json 读写
@@ -152,8 +170,15 @@ Rust   → 长轮询 getupdates → 收到消息 → call_llm() → sendmessage
 - 自动或手动分配 3-4 位专家角色
 - 2 轮讨论，每位角色独立调用 LLM（`stream_llm` 流式输出）
 - 最终调用 LLM 生成讨论总结
-- 前端专属全屏页面，角色卡片彩色头像区分
-- 角色配置持久化到 localStorage
+- 前端专属全屏页面，角色卡片彩色头像区分、拖拽排序
+- 讨论历史持久化到 localStorage，支持回看和删除
+
+## System Tray
+
+系统托盘（`lib.rs` setup）：
+- 关闭窗口 → 隐藏到托盘而非退出
+- 左键单击托盘图标 → 显示窗口
+- 右键菜单：显示主窗口 / 退出
 
 ## Key Technical Details
 
@@ -166,8 +191,10 @@ Rust   → 长轮询 getupdates → 收到消息 → call_llm() → sendmessage
 - `[media: filename]` 标记：LLM 回复中的标记会被解析为媒体文件发送
 - 微信长消息自动拆分（4000 字符上限，按换行符断行）
 - 微信"正在思考..."即时回复 + typing 指示器
+- 调试信息总线：`window.webotDebugBus` 向浏览器发送调试事件
 - 国际化：`i18n.tsx` 提供 Context + `useI18n()` hook，偏好存 localStorage
 - 主题：CSS `[data-theme="dark"]` 选择器，偏好存 localStorage
-- Tauri asset protocol 已启用（`assetProtocol.enable: true`），用于本地图片展示
+- Tauri features：`protocol-asset`（本地图片展示）、`tray-icon`（系统托盘）
 - `danger_accept_invalid_certs(true)` 用于开发环境跳过 SSL 验证
-- 前端还有未抽取到 hook 的逻辑（微信 QR 轮询、设置表单）直接写在 App.tsx 中
+- 前端图标库：lucide-react
+- 前端类型集中定义在 `types.ts`，常量在 `constants.ts`
