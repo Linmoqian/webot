@@ -1264,6 +1264,8 @@ function App() {
                                 const dy = ev.clientY - e.clientY;
                                 if (!roundtableDragRef.current && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
                                   roundtableDragRef.current = true;
+                                  document.body.style.userSelect = "none";
+                                  document.body.style.webkitUserSelect = "none";
                                   setDragGhost({ source, index: srcIdx, role: { name, trait }, x: ev.clientX, y: ev.clientY, offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top });
                                 }
                                 if (roundtableDragRef.current) {
@@ -1309,6 +1311,8 @@ function App() {
                                   }
                                   setTimeout(() => { setDragGhost(null); setDragOverIndex(null); }, 0);
                                 }
+                                document.body.style.userSelect = "";
+                                document.body.style.webkitUserSelect = "";
                                 setTimeout(() => { roundtableDragRef.current = false; }, 0);
                               };
                               el.setPointerCapture(e.pointerId);

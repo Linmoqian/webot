@@ -1581,9 +1581,8 @@ textarea::placeholder {
 .roundtable-role-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 
 .roundtable-role-card.dragging {
-  opacity: 0.25;
-  transform: scale(0.85);
-  transition: opacity 0.2s, transform 0.2s;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .roundtable-role-card-inner {
