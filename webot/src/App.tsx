@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users, Trash2 } from "lucide-react";
+import { Send, Bot, User, Sparkles, ChevronDown, ChevronRight, Loader2, QrCode, X, Settings, MessageCircle, Store, Cloud, Search, Code, Languages, Newspaper, LayoutDashboard, Zap, PenTool, Users, Trash2, Plus } from "lucide-react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import ReactMarkdown from "react-markdown";
@@ -32,7 +32,7 @@ interface Message {
 type RoundtableRole = { name: string; trait: string };
 type RoundtableRoleSource = "onstage" | "backstage";
 type RoundtableDragPayload = { source: RoundtableRoleSource; index: number };
-type RoundtableDropZone = "table" | "trash" | null;
+type RoundtableDropZone = "table" | "backstage" | "trash" | null;
 type RoundtablePointerDrag = RoundtableDragPayload & {
   role: RoundtableRole;
   pointerId: number;
@@ -627,22 +627,32 @@ function App() {
     setRoundtableOnStage(stage => [...stage, { name: role.name, trait: role.trait }]);
   }, [roundtableBackstage]);
 
+  const moveRoundtableRoleToBackstage = useCallback((source: RoundtableRoleSource, index: number) => {
+    if (source === "backstage") return;
+    const role = roundtableOnStage[index];
+    if (!role?.name.trim()) return;
+    setRoundtableOnStage(prev => prev.filter((_, j) => j !== index));
+    setRoundtableBackstage(backstage => [...backstage, { name: role.name, trait: role.trait }]);
+  }, [roundtableOnStage]);
+
   const getRoundtableDropZoneAt = (x: number, y: number): RoundtableDropZone => {
     const dropElement = document
       .elementFromPoint(x, y)
       ?.closest<HTMLElement>("[data-roundtable-drop-zone]");
     const zone = dropElement?.dataset.roundtableDropZone;
-    return zone === "table" || zone === "trash" ? zone : null;
+    return zone === "table" || zone === "backstage" || zone === "trash" ? zone : null;
   };
 
   const applyRoundtableDrop = useCallback((payload: RoundtableDragPayload, target: Exclude<RoundtableDropZone, null>) => {
     if (target === "trash") {
       removeRoundtableRole(payload.source, payload.index);
+    } else if (target === "backstage") {
+      moveRoundtableRoleToBackstage(payload.source, payload.index);
     } else {
       moveRoundtableRoleToTable(payload.source, payload.index);
     }
     setRoundtableDropZone(null);
-  }, [moveRoundtableRoleToTable, removeRoundtableRole]);
+  }, [moveRoundtableRoleToBackstage, moveRoundtableRoleToTable, removeRoundtableRole]);
 
   const startRoundtablePointerDrag = (
     event: ReactPointerEvent<HTMLElement>,
@@ -1342,14 +1352,6 @@ function App() {
           <div className="roundtable-page-header">
             <h3>{t("roundtableTitle")}</h3>
             <div className="roundtable-header-actions">
-              <input
-                className="roundtable-topic-input"
-                type="text"
-                placeholder={t("roundtableTopicPlaceholder")}
-                value={roundtableTopic}
-                onChange={e => setRoundtableTopic(e.target.value)}
-                disabled={roundtableRunning}
-              />
               <button
                 className="roundtable-start-btn"
                 disabled={roundtableRunning || !roundtableTopic.trim()}
@@ -1384,18 +1386,14 @@ function App() {
           <div className="roundtable-page-body">
             <div className="roundtable-main">
               <div className="roundtable-roles-section">
-                <div className="roundtable-card-pool">
+                <div
+                  className={`roundtable-card-pool ${roundtableDropZone === "backstage" ? "backstage-drop-active" : ""}`}
+                  data-roundtable-drop-zone="backstage"
+                >
                   <div className="roundtable-zone-header">
                     <span className="roundtable-zone-dot muted" />
                     <span className="roundtable-zone-label">{t("roundtableBackstage")}</span>
                     <span className="roundtable-zone-count">{roundtableBackstage.filter(r => r.name.trim()).length}</span>
-                    {!roundtableRunning && (
-                      <button className="roundtable-zone-add" onClick={() => {
-                        setRoundtableBackstage(prev => [...prev, { name: "", trait: "" }]);
-                        const idx = roundtableBackstage.length;
-                        setRoleEditing({ source: "backstage", index: idx });
-                      }}>+</button>
-                    )}
                   </div>
                   <div className="roundtable-zone-rail">
                     {roundtableBackstage.filter(r => r.name.trim()).length === 0 && (
@@ -1450,6 +1448,16 @@ function App() {
                         </div>
                       );
                     })}
+                    {!roundtableRunning && (
+                      <button className="roundtable-add-card" onClick={() => {
+                        setRoundtableBackstage(prev => [...prev, { name: "", trait: "" }]);
+                        const idx = roundtableBackstage.length;
+                        setRoleEditing({ source: "backstage", index: idx });
+                      }}>
+                        <span className="roundtable-add-icon"><Plus size={15} /></span>
+                        <span>{t("roundtableAddRole")}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div
@@ -1466,10 +1474,18 @@ function App() {
               >
                 <div className="roundtable-table-shell">
                 <div className="roundtable-table">
-                  <div className="roundtable-zone-header">
-                    <span className="roundtable-zone-dot" />
-                    <span className="roundtable-zone-label">{t("roundtableOnStage")}</span>
-                    <span className="roundtable-zone-count">{roundtableOnStage.filter(r => r.name.trim()).length}</span>
+                  <div className="roundtable-table-topic-wrap">
+                    <input
+                      className="roundtable-table-topic"
+                      type="text"
+                      placeholder={t("roundtableTopicPlaceholder")}
+                      value={roundtableTopic}
+                      onChange={e => setRoundtableTopic(e.target.value)}
+                      disabled={roundtableRunning}
+                    />
+                    <div className="roundtable-table-meta">
+                      {t("roundtableOnStage")} {roundtableOnStage.filter(r => r.name.trim()).length}
+                    </div>
                   </div>
                 </div>
                 <div className="roundtable-seat-ring">

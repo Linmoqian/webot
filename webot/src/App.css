@@ -1420,6 +1420,8 @@ textarea::placeholder {
   z-index: 100;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   animation: fadeIn 0.2s ease;
 }
 
@@ -1429,6 +1431,8 @@ textarea::placeholder {
   gap: 16px;
   padding: 12px 20px;
   border-bottom: 1px solid #f0f0f0;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .roundtable-page-header h3 {
@@ -1439,25 +1443,12 @@ textarea::placeholder {
 }
 
 .roundtable-header-actions {
-  flex: 1;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.roundtable-topic-input {
-  flex: 1;
-  max-width: 400px;
-  padding: 7px 14px;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.roundtable-topic-input:focus {
-  border-color: #f97316;
+  margin-left: auto;
+  min-width: 0;
 }
 
 .roundtable-start-btn {
@@ -1483,14 +1474,16 @@ textarea::placeholder {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 0;
+  overflow: auto;
 }
 
 .roundtable-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-height: 0;
+  overflow: visible;
 }
 
 /* Role zones */
@@ -1505,6 +1498,15 @@ textarea::placeholder {
 
 .roundtable-card-pool {
   min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 0 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.roundtable-card-pool.backstage-drop-active {
+  border-color: #22c55e;
+  background: #f0fdf4;
 }
 
 .roundtable-zone-header {
@@ -1541,24 +1543,6 @@ textarea::placeholder {
   text-align: center;
 }
 
-.roundtable-zone-add {
-  margin-left: auto;
-  width: 20px;
-  height: 20px;
-  border: 1px dashed #ccc;
-  border-radius: 5px;
-  background: none;
-  color: #999;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.roundtable-zone-add:hover { border-color: #f97316; color: #f97316; background: #fff7ed; }
-
 .roundtable-zone-rail {
   display: flex;
   gap: 10px;
@@ -1577,6 +1561,41 @@ textarea::placeholder {
   color: #bbb;
   padding: 6px 0;
   user-select: none;
+}
+
+.roundtable-add-card {
+  flex-shrink: 0;
+  width: 148px;
+  height: 76px;
+  border: 1px dashed #f97316;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff7ed 0%, #fff 100%);
+  color: #ea580c;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.roundtable-add-card:hover {
+  border-color: #ea580c;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.14);
+  transform: translateY(-2px);
+}
+
+.roundtable-add-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fed7aa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Role cards */
@@ -1736,8 +1755,8 @@ textarea::placeholder {
 }
 
 .roundtable-table-area {
-  min-height: 360px;
-  padding: 24px 20px 28px;
+  min-height: clamp(270px, 42vh, 360px);
+  padding: clamp(16px, 3vh, 24px) 20px clamp(18px, 3vh, 28px);
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   align-items: center;
@@ -1752,36 +1771,90 @@ textarea::placeholder {
 .roundtable-table-shell {
   position: relative;
   width: min(560px, 100%);
-  height: 320px;
+  height: clamp(240px, 36vh, 320px);
 }
 
 .roundtable-table {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 230px;
-  height: 230px;
+  width: clamp(180px, 28vh, 230px);
+  height: clamp(180px, 28vh, 230px);
   transform: translate(-50%, -50%);
   border-radius: 50%;
   border: 10px solid #d6a86c;
   background:
-    radial-gradient(circle at center, #f7d9aa 0 46%, #c47d3c 47% 100%);
-  box-shadow: inset 0 3px 12px rgba(120, 63, 18, 0.2), 0 8px 22px rgba(120, 63, 18, 0.12);
+    radial-gradient(circle at 35% 30%, rgba(255, 244, 214, 0.95) 0 12%, transparent 13%),
+    repeating-radial-gradient(circle at center, rgba(120, 63, 18, 0.08) 0 2px, transparent 3px 18px),
+    radial-gradient(circle at center, #f6d7a7 0 48%, #c77b36 49% 100%);
+  box-shadow:
+    inset 0 4px 14px rgba(120, 63, 18, 0.26),
+    inset 0 -10px 22px rgba(120, 63, 18, 0.18),
+    0 12px 28px rgba(120, 63, 18, 0.18);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
-.roundtable-table .roundtable-zone-header {
+.roundtable-table::before {
+  content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 0;
+  inset: 14px;
+  border: 1px solid rgba(120, 63, 18, 0.2);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.roundtable-table-topic-wrap {
+  position: relative;
+  z-index: 1;
+  width: min(176px, 78%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.roundtable-table-topic {
+  width: 100%;
+  height: 34px;
+  border: 1px solid rgba(120, 63, 18, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  padding-inline: 12px;
-  height: 32px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #5f3416;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  padding: 0 12px;
+  box-shadow: 0 5px 14px rgba(120, 63, 18, 0.1);
+}
+
+.roundtable-table-topic:focus {
+  border-color: #f97316;
+  background: white;
+}
+
+.roundtable-table-topic::placeholder {
+  color: #9a6a43;
+  font-weight: 500;
+}
+
+.roundtable-table-topic:disabled {
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.roundtable-table-meta {
+  max-width: 100%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #8a5a32;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  white-space: nowrap;
 }
 
 .roundtable-seat-ring {
@@ -1799,7 +1872,7 @@ textarea::placeholder {
 }
 
 .roundtable-seat {
-  --seat-radius: clamp(135px, 31vw, 205px);
+  --seat-radius: clamp(112px, 24vh, 205px);
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1852,6 +1925,7 @@ textarea::placeholder {
 
 .roundtable-discussion {
   flex: 1;
+  min-height: 180px;
   padding: 20px;
   overflow-y: auto;
   transition: background 0.15s;
@@ -2344,17 +2418,18 @@ textarea::placeholder {
   .roundtable-page { background: #1a1a1a; }
   .roundtable-page-header { border-color: #2a2a2a; }
   .roundtable-page-header h3 { color: #e5e5e5; }
-  .roundtable-topic-input { background: #222; border-color: #333; color: #e5e5e5; }
   .roundtable-roles-section { border-color: #2a2a2a; }
+  .roundtable-card-pool.backstage-drop-active { border-color: #22c55e; background: #102a18; }
   .roundtable-zone + .roundtable-zone { border-color: #2a2a2a; }
   .roundtable-zone-dot.muted { background: #555; }
   .roundtable-zone-label { color: #666; }
   .roundtable-zone-count { background: #2a2a2a; color: #666; }
-  .roundtable-zone-add { border-color: #444; color: #666; }
-  .roundtable-zone-add:hover { border-color: #f97316; color: #f97316; background: #2a1f0f; }
   .roundtable-zone-rail { scrollbar-color: #444 transparent; }
   .roundtable-zone-rail::-webkit-scrollbar-thumb { background: #444; }
   .roundtable-zone-empty { color: #555; }
+  .roundtable-add-card { background: linear-gradient(180deg, #2a1f0f 0%, #202020 100%); border-color: #7c3f12; color: #fb923c; }
+  .roundtable-add-card:hover { border-color: #f97316; box-shadow: 0 6px 16px rgba(249, 115, 22, 0.16); }
+  .roundtable-add-icon { background: #43250f; }
   .roundtable-role-card-face { border-color: #333; background: #222; }
   .roundtable-role-card:hover .roundtable-role-card-face { box-shadow: 0 4px 14px rgba(0,0,0,0.2); }
   .roundtable-role-action { background: #2a2a2a; border-color: #444; color: #999; }
@@ -2369,10 +2444,17 @@ textarea::placeholder {
   .roundtable-table-area.table-drop-active { background: #0f2a0f; }
   .roundtable-table {
     border-color: #6b4b2a;
-    background: radial-gradient(circle at center, #5a3517 0 46%, #3a2412 47% 100%);
-    box-shadow: inset 0 3px 12px rgba(0,0,0,0.22), 0 8px 22px rgba(0,0,0,0.18);
+    background:
+      radial-gradient(circle at 35% 30%, rgba(166, 109, 52, 0.4) 0 12%, transparent 13%),
+      repeating-radial-gradient(circle at center, rgba(0, 0, 0, 0.16) 0 2px, transparent 3px 18px),
+      radial-gradient(circle at center, #5a3517 0 48%, #3a2412 49% 100%);
+    box-shadow: inset 0 3px 12px rgba(0,0,0,0.3), 0 8px 22px rgba(0,0,0,0.2);
   }
-  .roundtable-table .roundtable-zone-header { background: rgba(34, 34, 34, 0.84); }
+  .roundtable-table::before { border-color: rgba(255, 255, 255, 0.1); }
+  .roundtable-table-topic { background: rgba(34, 34, 34, 0.88); border-color: #6b4b2a; color: #f5d0a3; }
+  .roundtable-table-topic:focus { background: #242424; border-color: #fb923c; }
+  .roundtable-table-topic::placeholder { color: #a57955; }
+  .roundtable-table-meta { background: rgba(34, 34, 34, 0.72); color: #b9895f; }
   .roundtable-seat {
     background: rgba(26, 26, 26, 0.92);
     border-color: rgba(255, 255, 255, 0.12);
