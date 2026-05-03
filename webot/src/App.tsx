@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import "./App.css";
 import { X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
