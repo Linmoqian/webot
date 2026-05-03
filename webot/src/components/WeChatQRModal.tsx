@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Loader2, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { invoke } from "@tauri-apps/api/core";
@@ -86,6 +86,10 @@ export function WeChatQRModal({ open, onClose }: WeChatQRModalProps) {
     setQrData("");
     qrIdRef.current = "";
   }, [stopPoll, onClose]);
+
+  useEffect(() => {
+    if (open) fetchQr();
+  }, [open, fetchQr]);
 
   if (!open) return null;
 
