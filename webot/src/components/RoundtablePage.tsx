@@ -62,6 +62,7 @@ export function RoundtablePage({ onClose }: RoundtablePageProps) {
 
   const topicRef = useRef(topic);
   const speakersRef = useRef(speakers);
+  const discussionRef = useRef<HTMLDivElement>(null);
   const pointerDragRef = useRef<RoundtablePointerDrag | null>(null);
   const suppressClickRef = useRef(false);
 
@@ -84,6 +85,7 @@ export function RoundtablePage({ onClose }: RoundtablePageProps) {
         setSpeakers(prev => {
           const existingRoles = [...new Set(prev.map(s => s.role))];
           const colorIndex = existingRoles.includes(role) ? existingRoles.indexOf(role) : existingRoles.length;
+          setTimeout(() => discussionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
           return [...prev, { round, role, content: "", color: ROLE_COLORS[colorIndex % ROLE_COLORS.length] }];
         });
       } else if (status === "streaming" && delta) {
@@ -389,7 +391,7 @@ export function RoundtablePage({ onClose }: RoundtablePageProps) {
               <span>{pointerDrag.role.name}</span>
             </div>
           )}
-          <div className="roundtable-discussion">
+          <div className="roundtable-discussion" ref={discussionRef}>
             {speakers.length === 0 && !result && (
               <div className="roundtable-empty">
                 <Users size={48} />
