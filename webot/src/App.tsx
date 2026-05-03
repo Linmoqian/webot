@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import "./App.css";
 import { X } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { useI18n, type Theme } from "./i18n";
 import { applyTheme } from "./constants";
@@ -92,13 +91,6 @@ function App() {
 
   useEffect(() => { loadInstalledPlugins(); }, [loadInstalledPlugins]);
 
-  useEffect(() => {
-    const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
-      event.preventDefault();
-      await getCurrentWindow().hide();
-    });
-    return () => { unlisten.then((fn) => fn()); };
-  }, []);
 
   const handleInstall = useCallback(async (plugin: PluginManifest) => {
     await invoke("install_plugin", { plugin });
