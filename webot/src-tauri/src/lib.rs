@@ -10,8 +10,6 @@ use commands::AppState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let settings = config::load_settings();
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -20,6 +18,21 @@ pub fn run() {
                 tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
                 Manager,
             };
+
+            // Set config dir to user-writable app data directory
+            if let Ok(data_dir) = app.path().app_data_dir() {
+                crate::config::set_config_dir(data_dir);
+            }
+
+            let settings = crate::config::load_settings();
+
+            app.manage(AppState {
+                messages: std::sync::Mutex::new(Vec::new()),
+                settings: std::sync::Mutex::new(settings),
+                wechat_poll_handle: std::sync::Mutex::new(None),
+                wechat_stop_tx: std::sync::Mutex::new(None),
+                task_runtime: crate::task::TaskRuntime::new(),
+            });
 
             let show_item = MenuItemBuilder::with_id("show", "显示主窗口").build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出").build(app)?;
@@ -63,13 +76,6 @@ pub fn run() {
                 .build(app)?;
 
             Ok(())
-        })
-        .manage(AppState {
-            messages: std::sync::Mutex::new(Vec::new()),
-            settings: std::sync::Mutex::new(settings),
-            wechat_poll_handle: std::sync::Mutex::new(None),
-            wechat_stop_tx: std::sync::Mutex::new(None),
-            task_runtime: crate::task::TaskRuntime::new(),
         })
         .invoke_handler(tauri::generate_handler![
             commands::start_chat,

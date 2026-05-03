@@ -1,4 +1,13 @@
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
+
+/// User-writable config directory (set from Tauri app_data_dir in packaged builds).
+static CONFIG_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
+
+/// Set the config directory. Called once during app setup.
+pub fn set_config_dir(dir: std::path::PathBuf) {
+    let _ = CONFIG_DIR.set(dir);
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderConfig {
@@ -102,12 +111,23 @@ pub struct Settings {
 }
 
 fn find_config() -> Option<std::path::PathBuf> {
+    // Dev mode: relative paths
     let candidates: Vec<std::path::PathBuf> = vec![
         std::env::current_dir().unwrap_or_default().join("config.json"),
         std::path::PathBuf::from("../config.json"),
         std::env::current_dir().unwrap_or_default().join("../../config.json"),
     ];
-    candidates.into_iter().find(|p| p.exists())
+    if let Some(path) = candidates.into_iter().find(|p| p.exists()) {
+        return Some(path);
+    }
+
+    // Packaged mode: user-writable app data directory
+    if let Some(dir) = CONFIG_DIR.get() {
+        let _ = std::fs::create_dir_all(dir);
+        return Some(dir.join("config.json"));
+    }
+
+    None
 }
 
 pub fn load_settings() -> Settings {
@@ -125,6 +145,9 @@ pub fn config_path() -> Option<std::path::PathBuf> {
 
 pub fn save_settings(settings: &Settings) -> Result<(), String> {
     let path = config_path().ok_or("config.json 未找到")?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建配置目录失败: {e}"))?;
+    }
     let content = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
     std::fs::write(&path, content).map_err(|e| e.to_string())
 }
