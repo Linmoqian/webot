@@ -62,7 +62,7 @@ jobs:
           projectPath: webot
           tagName: v__VERSION__
           releaseName: 'Yunfeng v__VERSION__'
-          releaseBody: 'See the assets to download and install.'
+          releaseBody: '伟大的初始化框架，一切伟大，都是从零开始，不是吗？'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
