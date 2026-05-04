@@ -36,7 +36,7 @@ export function Header({
     <header className="app-header">
       <div className="header-brand">
         <div className="logo-box"><Sparkles size={20} className="logo-icon" /></div>
-        <h2>Nexus AI</h2>
+        <h2>Yunfeng</h2>
         <span className="badge">Beta</span>
       </div>
       <button className="qr-header-btn" onClick={onOpenQr} title={t("tooltipWechatLogin")}
